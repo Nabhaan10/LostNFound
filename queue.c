@@ -6,6 +6,7 @@ typedef struct {
     int type;     // to identify if the item is lost or found(0 if lost, 1 if found)
     char itemName[50];
     char report[50];
+    int reportID; // unique report ID for each item
 } Item;
 
 // Circular queues for lost and found items
@@ -74,13 +75,91 @@ void traverse_found(void (*visit)(Item* it, void* ctx), void* ctx) {
 static void print_item(Item* it, void* ctx) {
     (void)ctx;
     if (!it) return;
-    printf("type=%d, name=%s, report=%s\n", it->type, it->itemName, it->report);
+    printf("  [ID: %d] %s - %s\n", it->reportID, it->itemName, it->report);
 }
 
 void debug_print_queues(void) {
-    printf("Lost queue (%s):\n", isEmpty(lostfront, lostrear) ? "empty" : "items");
-    traverse_lost(print_item, NULL);
-    printf("Found queue (%s):\n", isEmpty(foundfront, foundrear) ? "empty" : "items");
-    traverse_found(print_item, NULL);
+    printf("\n=== Lost Items Queue ===\n");
+    if (isEmpty(lostfront, lostrear)) {
+        printf("  (No pending lost items)\n");
+    } else {
+        traverse_lost(print_item, NULL);
+    }
+    
+    printf("\n=== Found Items Queue ===\n");
+    if (isEmpty(foundfront, foundrear)) {
+        printf("  (No pending found items)\n");
+    } else {
+        traverse_found(print_item, NULL);
+    }
+}
+
+// Remove a specific item from lost queue by report ID
+int remove_lost_by_id(int reportID) {
+    if (isEmpty(lostfront, lostrear)) return 0;
+    
+    int i = lostfront;
+    int prev = -1;
+    
+    // Find the item with matching ID
+    while (i != lostrear) {
+        if (lostqueue[i]->reportID == reportID) {
+            // Found it! Now remove it by shifting items
+            free(lostqueue[i]);
+            
+            // Shift all items after this one forward
+            int curr = i;
+            while (curr != lostrear) {
+                int next = (curr + 1) % Qsize;
+                if (next == lostrear) {
+                    lostqueue[curr] = NULL;
+                    break;
+                }
+                lostqueue[curr] = lostqueue[next];
+                curr = next;
+            }
+            
+            // Move rear back by one
+            lostrear = (lostrear - 1 + Qsize) % Qsize;
+            return 1; // success
+        }
+        i = (i + 1) % Qsize;
+    }
+    
+    return 0; // not found
+}
+
+// Remove a specific item from found queue by report ID
+int remove_found_by_id(int reportID) {
+    if (isEmpty(foundfront, foundrear)) return 0;
+    
+    int i = foundfront;
+    
+    // Find the item with matching ID
+    while (i != foundrear) {
+        if (foundqueue[i]->reportID == reportID) {
+            // Found it! Now remove it by shifting items
+            free(foundqueue[i]);
+            
+            // Shift all items after this one forward
+            int curr = i;
+            while (curr != lostrear) {
+                int next = (curr + 1) % Qsize;
+                if (next == foundrear) {
+                    foundqueue[curr] = NULL;
+                    break;
+                }
+                foundqueue[curr] = foundqueue[next];
+                curr = next;
+            }
+            
+            // Move rear back by one
+            foundrear = (foundrear - 1 + Qsize) % Qsize;
+            return 1; // success
+        }
+        i = (i + 1) % Qsize;
+    }
+    
+    return 0; // not found
 }
 

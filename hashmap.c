@@ -67,17 +67,27 @@ int count_all_items() {
     return count;
 }
 
-// SIMPLE VERSION: Search for a specific item type and show contact info
+// searches based on item type and displays the contact info of the reporter
 void search_item_type(char* item) {
     int index = hashfunc(item);
     Node* current = hashtable[index];
     int found = 0;
     
-    printf("\n=== LOST %s ITEMS ===\n", item);
+    printf("\n=== %s ITEMS ===\n", item);
     while(current != NULL) {
         if(strcmp(current->item, item) == 0) {
-            printf("\nDescription: %s\n", current->description);
-            printf("Lost by: %s\n", current->reporterName);
+            // Check if it's a found item (has FOUND_ prefix)
+            int isFound = (strncmp(current->description, "FOUND_", 6) == 0);
+            
+            if (isFound) {
+                printf("\n[FOUND ITEM]\n");
+                printf("Description: %s\n", current->description + 6);
+                printf("Found by: %s\n", current->reporterName);
+            } else {
+                printf("\n[LOST ITEM]\n");
+                printf("Description: %s\n", current->description);
+                printf("Lost by: %s\n", current->reporterName);
+            }
             printf("Contact: %s\n", current->phoneNumber);
             printf("----------------------------------------\n");
             found = 1;
@@ -86,11 +96,11 @@ void search_item_type(char* item) {
     }
     
     if(!found) {
-        printf("No lost %s items found.\n", item);
+        printf("No %s items found.\n", item);
     }
 }
 
-// SIMPLE VERSION: Search by description keywords
+// searches based on description keywords and displays matching items
 void search_by_description(char* keyword) {
     printf("\nSearching for items with description containing '%s':\n", keyword);
     int found = 0;
@@ -99,7 +109,22 @@ void search_by_description(char* keyword) {
         Node* current = hashtable[i];
         while(current != NULL) {
             if(strstr(current->description, keyword) != NULL) {
-                printf("  Found: %s - %s (bucket %d)\n", current->item, current->description, i);
+                // Check if it's a found item
+                int isFound = (strncmp(current->description, "FOUND_", 6) == 0);
+                
+                if (isFound) {
+                    printf("\n[FOUND ITEM]\n");
+                    printf("Item: %s\n", current->item);
+                    printf("Description: %s\n", current->description + 6);
+                    printf("Found by: %s\n", current->reporterName);
+                } else {
+                    printf("\n[LOST ITEM]\n");
+                    printf("Item: %s\n", current->item);
+                    printf("Description: %s\n", current->description);
+                    printf("Lost by: %s\n", current->reporterName);
+                }
+                printf("Contact: %s\n", current->phoneNumber);
+                printf("----------------------------------------\n");
                 found = 1;
             }
             current = current->next;
@@ -111,7 +136,54 @@ void search_by_description(char* keyword) {
     }
 }
 
-// Initialize hash table function
+// Search for FOUND items only (items with FOUND_ prefix)
+void search_found_items(char* item) {
+    int index = hashfunc(item);
+    Node* current = hashtable[index];
+    int found = 0;
+    
+    printf("\n=== FOUND %s ITEMS ===\n", item);
+    while(current != NULL) {
+        if(strcmp(current->item, item) == 0 && strncmp(current->description, "FOUND_", 6) == 0) {
+            // Display without the FOUND_ prefix
+            printf("\nDescription: %s\n", current->description + 6);
+            printf("Found by: %s\n", current->reporterName);
+            printf("Contact: %s\n", current->phoneNumber);
+            printf("----------------------------------------\n");
+            found = 1;
+        }
+        current = current->next;
+    }
+    
+    if(!found) {
+        printf("No matching found %s items yet.\n", item);
+    }
+}
+
+// Search for LOST items only (items WITHOUT FOUND_ prefix)
+void search_lost_items(char* item) {
+    int index = hashfunc(item);
+    Node* current = hashtable[index];
+    int found = 0;
+    
+    printf("\n=== LOST %s ITEMS ===\n", item);
+    while(current != NULL) {
+        if(strcmp(current->item, item) == 0 && strncmp(current->description, "FOUND_", 6) != 0) {
+            printf("\nDescription: %s\n", current->description);
+            printf("Lost by: %s\n", current->reporterName);
+            printf("Contact: %s\n", current->phoneNumber);
+            printf("----------------------------------------\n");
+            found = 1;
+        }
+        current = current->next;
+    }
+    
+    if(!found) {
+        printf("No matching lost %s items yet.\n", item);
+    }
+}
+
+// Initializing the hash table
 void init_hashtable() {
     for(int i = 0; i < SIZE; i++) {
         hashtable[i] = NULL;

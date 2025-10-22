@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "hashmapjose.c"
+#include "hashmap.c"
 #include "queue.c"
 
 int reportCounter = 1000;
@@ -43,6 +43,7 @@ void reportLost() {
     // add to queue
     Item* item = (Item*)malloc(sizeof(Item));
     item->type = 0;
+    item->reportID = reportCounter;
     strcpy(item->itemName, itemType);
     strcpy(item->report, description);
     
@@ -56,8 +57,8 @@ void reportLost() {
         free(item);
     }
     
-    printf("\nSearching for matches...\n");
-    search_item_type(itemType);
+    printf("\nSearching for matching found items...\n");
+    search_found_items(itemType);
 }
 
 void reportFound() {
@@ -82,6 +83,7 @@ void reportFound() {
     
     Item* item = (Item*)malloc(sizeof(Item));
     item->type = 1;
+    item->reportID = reportCounter;
     strcpy(item->itemName, itemType);
     strcpy(item->report, description);
     
@@ -90,8 +92,8 @@ void reportFound() {
         printf("Report ID: %d\n", reportCounter);
         reportCounter++;
         
-        printf("\nLost items that might match:\n");
-        search_item_type(itemType);
+        printf("\nSearching for matching lost items...\n");
+        search_lost_items(itemType);
         
         printf("\nContact owners directly if this matches!\n");
     } else {
@@ -119,37 +121,46 @@ void processQueue() {
     int choice;
     
     printf("\n--- Staff: Process Queue ---\n");
-    printf("1. Process lost item\n");
-    printf("2. Process found item\n");
-    printf("3. View queue\n");
+    printf("1. View all pending items\n");
+    printf("2. Resolve lost item (by ID)\n");
+    printf("3. Resolve found item (by ID)\n");
     printf("Enter choice: ");
     
     scanf("%d", &choice);
     clearBuffer();
     
     if (choice == 1) {
-        Item* item = dequeue_lost();
-        if (item) {
-            printf("\nProcessing: %s\n", item->itemName);
-            printf("Details: %s\n", item->report);
-            printf("Done!\n");
-            free(item);
-        } else {
-            printf("No lost items in queue\n");
-        }
-    } else if (choice == 2) {
-        Item* item = dequeue_found();
-        if (item) {
-            printf("\nProcessing: %s\n", item->itemName);
-            printf("Details: %s\n", item->report);
-            printf("Done!\n");
-            free(item);
-        } else {
-            printf("No found items in queue\n");
-        }
-    } else if (choice == 3) {
-        printf("\nQueue status:\n");
+        // View all items in queue
         debug_print_queues();
+        
+    } else if (choice == 2) {
+        // Resolve specific lost item by ID
+        debug_print_queues();
+        printf("\nEnter Report ID to resolve: ");
+        int id;
+        scanf("%d", &id);
+        clearBuffer();
+        
+        if (remove_lost_by_id(id)) {
+            printf("\nReport ID %d has been resolved and removed from queue!\n", id);
+        } else {
+            printf("\nReport ID %d not found in lost items queue.\n", id);
+        }
+        
+    } else if (choice == 3) {
+        // Resolve specific found item by ID
+        debug_print_queues();
+        printf("\nEnter Report ID to resolve: ");
+        int id;
+        scanf("%d", &id);
+        clearBuffer();
+        
+        if (remove_found_by_id(id)) {
+            printf("\nReport ID %d has been resolved and removed from queue!\n", id);
+        } else {
+            printf("\nReport ID %d not found in found items queue.\n", id);
+        }
+        
     } else {
         printf("Invalid choice\n");
     }
@@ -168,13 +179,13 @@ void searchByDescription() {
 void loadSampleData() {
     printf("Loading sample data...\n");
     
-    insertitem("phone", "iPhone_12_blue_case", "John_Smith", "555-1234");
-    insertitem("phone", "Samsung_Galaxy_black", "Sarah_Johnson", "555-5678");
-    insertitem("wallet", "Brown_leather_wallet", "Mike_Chen", "555-9999");
-    insertitem("keys", "Toyota_car_keys", "Lisa_Wong", "555-1111");
+    insertitem("phone", "iPhone 12 blue case", "John Smith", "555-1234");
+    insertitem("phone", "Samsung Galaxy black", "Sarah Johnson", "555-5678");
+    insertitem("wallet", "Brown leather wallet", "Mike Chen", "555-9999");
+    insertitem("keys", "Toyota car keys", "Lisa Wong", "555-1111");
     
-    insertitem("phone", "FOUND_iPhone_blue_case", "Emma_Davis", "555-3333");
-    insertitem("wallet", "FOUND_Brown_wallet", "Tom_Wilson", "555-4444");
+    insertitem("phone", "FOUND_iPhone blue case", "Emma Davis", "555-3333");
+    insertitem("wallet", "FOUND_Brown wallet", "Tom Wilson", "555-4444");
     
     printf("Sample data loaded!\n");
 }
@@ -182,8 +193,7 @@ void loadSampleData() {
 int main() {
     init_hashtable();
     
-    printf("Lost and Found System\n");
-    printf("System ready!\n\n");
+    printf("Lost and Found System Dashboard read!\n\n");
     
     int choice;
     

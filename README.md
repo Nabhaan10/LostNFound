@@ -52,6 +52,7 @@ gcc maincode_simple.c -o lost_found.exe
 **Staff Processing:**
 - Processes reports in order received
 - Fair FIFO queue ensures equal treatment
+- Resolve Found/Lost items based on their ID.
 - Hash table enables quick lookups
 
 ## Project Structure
