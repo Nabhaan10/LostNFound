@@ -54,19 +54,6 @@ void print_all_items() {
     }
 }
 
-// SIMPLE VERSION: Count total items in hash table
-int count_all_items() {
-    int count = 0;
-    for(int i = 0; i < SIZE; i++) {
-        Node* current = hashtable[i];
-        while(current != NULL) {
-            count++;
-            current = current->next;
-        }
-    }
-    return count;
-}
-
 // searches based on item type and displays the contact info of the reporter
 void search_item_type(char* item) {
     int index = hashfunc(item);
