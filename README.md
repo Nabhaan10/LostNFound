@@ -59,6 +59,6 @@ gcc maincode_simple.c -o lost_found.exe
 
 ```
 maincode_simple.c - Main program logic
-    ├── hashmapjose.c - Hash table module
+    ├── hashmap.c - Hash table module
     └── queue.c - Queue module
 ```
