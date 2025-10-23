@@ -8,11 +8,43 @@ A terminal-based lost and found management system using hash tables and circular
 - `queue.c` - Queue implementation for fair processing
 - `maincode_simple.c` - Main program with terminal interface
 
-## How to Run
+## Prerequisites
+
+- GCC compiler (MinGW for Windows, GCC for Linux/Mac)
+- Terminal/Command Prompt access
+- Basic C programming knowledge (optional, for modifications)
+
+## Steps to Reproduce
+
+### 1. Clone the Repository
 
 ```bash
-gcc maincode_simple.c -o lost_found.exe
-./lost_found.exe
+git clone https://github.com/Nabhaan10/LostNFound.git
+cd LostNFound
+```
+
+### 2. Compile the Program
+
+**Windows (PowerShell/CMD):**
+```bash
+gcc maincode_simple.c -o maincode_simple.exe
+```
+
+**Linux/Mac:**
+```bash
+gcc maincode_simple.c -o maincode_simple
+```
+
+### 3. Run the Program
+
+**Windows:**
+```bash
+.\maincode_simple.exe
+```
+
+**Linux/Mac:**
+```bash
+./maincode_simple
 ```
 
 ## Features
