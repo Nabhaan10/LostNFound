@@ -6,7 +6,7 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
     min-height: 100vh;
 }
 
@@ -179,7 +179,7 @@ body {
 .form-container textarea:focus,
 .form-container select:focus {
     outline: none;
-    border-color: #667eea;
+    border-color: #2563EB;
 }
 
 .form-container textarea {
@@ -189,7 +189,7 @@ body {
 
 .btn-primary {
     width: 100%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
     color: white;
     padding: 1.2rem 2rem;
     border: none;
@@ -338,7 +338,7 @@ body {
 
 .search-box button {
     padding: 1rem 2rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
     color: white;
     border: none;
     border-radius: 10px;
@@ -370,9 +370,9 @@ body {
 
 .queue-tabs button {
     padding: 1rem 2rem;
-    border: 2px solid #667eea;
+    border: 2px solid #2563EB;
     background: white;
-    color: #667eea;
+    color: #2563EB;
     border-radius: 10px;
     cursor: pointer;
     font-size: 1rem;
@@ -381,7 +381,7 @@ body {
 }
 
 .queue-tabs button.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
     color: white;
 }
 
@@ -498,7 +498,7 @@ body {
 .login-card h2 {
     text-align: center;
     margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -529,7 +529,7 @@ body.dark-mode .app {
 
 body.dark-mode .login-card {
     background: rgba(20, 20, 35, 0.95);
-    border: 1px solid rgba(103, 126, 234, 0.3);
+    border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .login-card h2 {
@@ -550,12 +550,12 @@ body.dark-mode .login-card label {
 body.dark-mode .header {
     background: rgba(20, 20, 35, 0.95);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-    border-bottom: 1px solid rgba(103, 126, 234, 0.3);
+    border-bottom: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .header h1 {
     color: #ffffff;
-    text-shadow: 0 0 20px rgba(103, 126, 234, 0.5);
+    text-shadow: 0 0 20px rgba(37, 99, 235, 0.5);
 }
 
 body.dark-mode .subtitle {
@@ -567,20 +567,20 @@ body.dark-mode .header-content div {
 }
 
 body.dark-mode .nav button {
-    background: rgba(103, 126, 234, 0.15);
+    background: rgba(37, 99, 235, 0.15);
     color: #ccd6f6;
-    border: 1px solid rgba(103, 126, 234, 0.3);
+    border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .nav button:hover {
-    background: rgba(103, 126, 234, 0.25);
-    border-color: rgba(103, 126, 234, 0.5);
+    background: rgba(37, 99, 235, 0.25);
+    border-color: rgba(37, 99, 235, 0.5);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(103, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .nav button.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
     color: white;
     border-color: transparent;
 }
@@ -608,7 +608,7 @@ body.dark-mode .items-grid {
 
 body.dark-mode h2 {
     color: #ccd6f6;
-    text-shadow: 0 2px 10px rgba(103, 126, 234, 0.3);
+    text-shadow: 0 2px 10px rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .stats-grid {
@@ -622,15 +622,15 @@ body.dark-mode .report-found form {
 }
 
 body.dark-mode .stat-card {
-    background: linear-gradient(135deg, rgba(103, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-    border: 1px solid rgba(103, 126, 234, 0.3);
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border: 1px solid rgba(37, 99, 235, 0.3);
     color: #ccd6f6;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 body.dark-mode .stat-card:hover {
-    border-color: rgba(103, 126, 234, 0.5);
-    box-shadow: 0 8px 25px rgba(103, 126, 234, 0.2);
+    border-color: rgba(37, 99, 235, 0.5);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.2);
 }
 
 body.dark-mode .stat-card h3 {
@@ -638,7 +638,7 @@ body.dark-mode .stat-card h3 {
 }
 
 body.dark-mode .stat-card .stat-value {
-    color: #667eea;
+    color: #60A5FA;
 }
 
 body.dark-mode .form-group label {
@@ -649,15 +649,15 @@ body.dark-mode .form-group input,
 body.dark-mode .form-group select,
 body.dark-mode .form-group textarea {
     background: rgba(30, 30, 50, 0.6);
-    border: 1px solid rgba(103, 126, 234, 0.3);
+    border: 1px solid rgba(37, 99, 235, 0.3);
     color: #ccd6f6;
 }
 
 body.dark-mode .form-group input:focus,
 body.dark-mode .form-group select:focus,
 body.dark-mode .form-group textarea:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(103, 126, 234, 0.1);
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     background: rgba(30, 30, 50, 0.8);
 }
 
@@ -672,13 +672,13 @@ body.dark-mode .items-grid {
 
 body.dark-mode .item-card {
     background: rgba(25, 25, 40, 0.8);
-    border: 1px solid rgba(103, 126, 234, 0.25);
+    border: 1px solid rgba(37, 99, 235, 0.25);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
 body.dark-mode .item-card:hover {
-    border-color: rgba(103, 126, 234, 0.4);
-    box-shadow: 0 8px 25px rgba(103, 126, 234, 0.2);
+    border-color: rgba(37, 99, 235, 0.4);
+    box-shadow: 0 8px 25px rgba(37, 99, 235, 0.2);
 }
 
 body.dark-mode .item-card h3 {
@@ -694,8 +694,8 @@ body.dark-mode .item-card p strong {
 }
 
 body.dark-mode .status-badge {
-    background: rgba(103, 126, 234, 0.2);
-    border: 1px solid rgba(103, 126, 234, 0.3);
+    background: rgba(37, 99, 235, 0.2);
+    border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .status-badge.lost {
@@ -722,19 +722,19 @@ body.dark-mode .search-container {
 
 body.dark-mode .search-box {
     background: rgba(25, 25, 40, 0.6);
-    border: 1px solid rgba(103, 126, 234, 0.3);
+    border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .search-box input,
 body.dark-mode .search-box select {
     background: rgba(30, 30, 50, 0.6);
-    border: 1px solid rgba(103, 126, 234, 0.3);
+    border: 1px solid rgba(37, 99, 235, 0.3);
     color: #ccd6f6;
 }
 
 body.dark-mode .search-box input:focus,
 body.dark-mode .search-box select:focus {
-    border-color: #667eea;
+    border-color: #2563EB;
     background: rgba(30, 30, 50, 0.8);
 }
 
@@ -744,33 +744,33 @@ body.dark-mode .search-box input::placeholder {
 
 body.dark-mode button[type="submit"],
 body.dark-mode .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
     border: none;
 }
 
 body.dark-mode button[type="submit"]:hover,
 body.dark-mode .btn-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(103, 126, 234, 0.4);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
 }
 
 body.dark-mode .footer {
     background: rgba(20, 20, 35, 0.95);
     color: #a8b2d1;
-    border-top: 1px solid rgba(103, 126, 234, 0.3);
+    border-top: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .login-container,
 body.dark-mode .register-container {
     background: rgba(20, 20, 35, 0.95);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(103, 126, 234, 0.3);
+    border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
 body.dark-mode .login-box h2,
 body.dark-mode .register-box h2 {
     color: #ffffff;
-    text-shadow: 0 0 20px rgba(103, 126, 234, 0.5);
+    text-shadow: 0 0 20px rgba(37, 99, 235, 0.5);
 }
 
 body.dark-mode .login-box p,
@@ -779,9 +779,9 @@ body.dark-mode .register-box p {
 }
 
 body.dark-mode .toggle-auth {
-    color: #667eea;
+    color: #60A5FA;
 }
 
 body.dark-mode .toggle-auth:hover {
-    color: #764ba2;
+    color: #3B82F6;
 }

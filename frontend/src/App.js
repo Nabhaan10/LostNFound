@@ -110,7 +110,7 @@ function App() {
                     top: '10px',
                     left: '10px',
                     padding: '0.5rem 1rem',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)',
                     border: 'none',
                     borderRadius: '5px',
                     color: 'white',
