@@ -4,16 +4,16 @@ A modern, full-stack web application for managing lost and found items in your c
 
 ## Features
 
-- 📢 **Report Lost Items** - Students can report items they've lost
-- ✨ **Report Found Items** - Students can report items they've found
-- 🔍 **Smart Search** - Search by item type or description keywords
-- 🎯 **Automatic Matching** - System suggests potential matches when reporting items
-- 📋 **View All Items** - Browse all lost and found items with filters
-- 🔐 **User Authentication** - Secure login with roll number and password
-- ✅ **Self-Resolution** - Users can mark their own items as reunited
-- 📊 **Statistics Dashboard** - Real-time stats of items and resolutions
-- 💾 **Persistent Database** - All data stored in MySQL database
-- 🌙 **Dark Mode** - Beautiful dark theme with light mode toggle
+- **Report Lost Items** - Students can report items they've lost
+- **Report Found Items** - Students can report items they've found
+- **Smart Search** - Search by item type or description keywords
+- **Automatic Matching** - System suggests potential matches when reporting items
+- **View All Items** - Browse all lost and found items with filters
+- **User Authentication** - Secure login with roll number and password
+- **Self-Resolution** - Users can mark their own items as reunited
+- **Statistics Dashboard** - Real-time stats of items and resolutions
+- **Persistent Database** - All data stored in MySQL database
+- **Dark Mode** - Beautiful dark theme with light mode toggle
 
 ## Project Structure
 
@@ -162,7 +162,7 @@ SourceCode/
    - Filter by lost or found items only
    - Mark your own items as "Reunited" when resolved
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Authentication
 - `POST /api/auth/register` - Register new user
@@ -198,7 +198,7 @@ SourceCode/
 - **MySQL** - Relational database
 - Tables: `items`, `users`, `match_history`
 
-## 🔄 Original C Code Integration
+## Original C Code Integration
 
 The original C code functionality has been translated to the web application:
 
