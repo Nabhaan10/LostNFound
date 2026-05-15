@@ -1,168 +1,158 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ConfirmModal from './ConfirmModal';
+import ImageModal from './ImageModal';
 
-function Search({ apiUrl, user }) {
+const ITEM_TYPES = ['Electronics', 'Wallet', 'Keys', 'Bag', 'Clothing', 'Books', 'ID/Card', 'Jewelry', 'Other'];
+
+function Search({ apiUrl, baseUrl, user }) {
     const [searchType, setSearchType] = useState('type');
-    const [searchQuery, setSearchQuery] = useState('');
-    const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState([]);
     const [searched, setSearched] = useState(false);
-    const [resolvingId, setResolvingId] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [modalImage, setModalImage] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, itemId: null, itemKey: null, reportType: null });
+    const [resultModal, setResultModal] = useState({ isOpen: false, message: '', type: 'success' });
 
-    const handleSearch = async () => {
-        if (!searchQuery.trim()) {
-            alert('Please enter a search query');
-            return;
-        }
-        
+    const handleSearch = async (e) => {
+        e?.preventDefault();
+        if (!query.trim()) return;
         setLoading(true);
-        setSearched(true);
-        
+        setResults([]);
+        setSearched(false);
         try {
-            let url = '';
+            let url;
             if (searchType === 'type') {
-                url = `${apiUrl}/items/search/type/${encodeURIComponent(searchQuery)}`;
+                url = `${apiUrl}/items/search/type/${encodeURIComponent(query)}`;
             } else {
-                url = `${apiUrl}/items/search/description/${encodeURIComponent(searchQuery)}`;
+                url = `${apiUrl}/items/search/description/${encodeURIComponent(query)}`;
             }
-            
             const response = await axios.get(url);
-            
             if (response.data.success) {
-                setItems(response.data.items);
+                setResults(response.data.items || []);
             }
-        } catch (error) {
-            console.error('Error searching items:', error);
-            alert('Error searching items');
+        } catch (err) {
+            console.error('Search error:', err);
         } finally {
             setLoading(false);
+            setSearched(true);
         }
     };
 
-    const handleReunite = async (reportId) => {
-        if (!window.confirm('Have you successfully reunited with this item? This will mark it as resolved.')) {
-            return;
-        }
-        
-        setResolvingId(reportId);
+    const handleReunite = (item) => {
+        setConfirmModal({ isOpen: true, itemId: item.report_id, itemKey: item.id, reportType: item.is_found });
+    };
+
+    const confirmReunite = async () => {
+        const { itemId, itemKey } = confirmModal;
+        setConfirmModal({ isOpen: false, itemId: null, itemKey: null, reportType: null });
         try {
-            const response = await axios.put(
-                `${apiUrl}/items/resolve/${reportId}`,
-                { userId: user.id }
-            );
-            
+            const response = await axios.put(`${apiUrl}/items/resolve/${itemId}`, { userId: user.id });
             if (response.data.success) {
-                alert('✅ Item marked as reunited! Thank you for updating the system.');
-                handleSearch(); // Refresh search results
-            }
-        } catch (error) {
-            console.error('Error resolving item:', error);
-            if (error.response?.data?.error) {
-                alert('❌ ' + error.response.data.error);
+                setResults(prev => prev.filter(i => i.id !== itemKey));
+                setResultModal({ isOpen: true, message: 'Item marked as reunited! Great job.', type: 'success' });
             } else {
-                alert('❌ Error marking item as reunited');
+                setResultModal({ isOpen: true, message: response.data.message || 'Could not resolve item.', type: 'error' });
             }
-        } finally {
-            setResolvingId(null);
+        } catch (err) {
+            setResultModal({ isOpen: true, message: 'Server error. Please try again.', type: 'error' });
         }
     };
 
     return (
-        <div className="search-container">
-            <h2>🔍 Search Items</h2>
-            
-            <div className="search-box">
-                <select
-                    value={searchType}
-                    onChange={(e) => {
-                        setSearchType(e.target.value);
-                        setSearched(false);
-                        setItems([]);
-                    }}
-                >
-                    <option value="type">Search by Item Type</option>
+        <div>
+            <div className="search-page-header">
+                <h1>Search Items</h1>
+                <p>Search the database of reported lost and found items.</p>
+            </div>
+
+            <form className="filter-bar" onSubmit={handleSearch}>
+                <select value={searchType} onChange={e => { setSearchType(e.target.value); setQuery(''); }}>
+                    <option value="type">Search by Type</option>
                     <option value="description">Search by Description</option>
                 </select>
-                
+
                 {searchType === 'type' ? (
-                    <select
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    >
-                        <option value="">Select item type</option>
-                        <option value="phone">📱 Phone</option>
-                        <option value="wallet">👛 Wallet</option>
-                        <option value="keys">🔑 Keys</option>
-                        <option value="laptop">💻 Laptop</option>
-                        <option value="bag">🎒 Bag</option>
-                        <option value="watch">⌚ Watch</option>
-                        <option value="jewelry">💍 Jewelry</option>
-                        <option value="glasses">👓 Glasses</option>
-                        <option value="bottle">🧃 Water Bottle</option>
-                        <option value="books">📚 Books</option>
-                        <option value="id-card">🪪 ID Card</option>
-                        <option value="umbrella">☂️ Umbrella</option>
-                        <option value="other">📦 Other</option>
+                    <select value={query} onChange={e => setQuery(e.target.value)}>
+                        <option value="">Select type…</option>
+                        {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                 ) : (
                     <input
                         type="text"
-                        placeholder="Enter keyword (e.g., 'blue', 'iPhone', 'leather')"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        placeholder="Keyword — e.g. black wallet, iPhone"
                     />
                 )}
-                
-                <button onClick={handleSearch} disabled={loading}>
-                    {loading ? '⏳ Searching...' : '🔍 Search'}
+
+                <button type="submit" className="search-btn" disabled={loading || !query}>
+                    {loading ? 'Searching…' : 'Search'}
                 </button>
-            </div>
-            
-            {loading && <div className="loading">🔄 Loading...</div>}
-            
-            {searched && !loading && items.length === 0 && (
+            </form>
+
+            {loading && (
+                <div className="loading"><div className="loading-spinner" /></div>
+            )}
+
+            {!loading && searched && results.length === 0 && (
                 <div className="empty-state">
-                    <h3>😔 No items found</h3>
-                    <p>Try adjusting your search criteria</p>
+                    <p>No items found matching your search.</p>
+                    <p>Try a different keyword or browse all items.</p>
                 </div>
             )}
-            
-            {items.length > 0 && (
-                <div className="items-grid">
-                    {items.map(item => (
-                        <div key={item.id} className={`item-card ${item.is_found ? 'found' : 'lost'}`}>
-                            <div className={`item-badge ${item.is_found ? 'found' : 'lost'}`}>
-                                {item.is_found ? 'FOUND' : 'LOST'}
+
+            {results.length > 0 && (
+                <>
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                        {results.length} result{results.length !== 1 ? 's' : ''} found
+                    </p>
+                    <div className="items-grid">
+                        {results.map(item => (
+                            <div key={item.id} className="item-card">
+                                {item.image_url ? (
+                                    <div
+                                        className="card-image"
+                                        style={{ backgroundImage: `url(${baseUrl}${item.image_url})` }}
+                                        onClick={() => setModalImage(`${baseUrl}${item.image_url}`)}
+                                    />
+                                ) : (
+                                    <div className="card-no-image">No Photo</div>
+                                )}
+                                <div className="card-body">
+                                    <div className="card-badge-row">
+                                        <span className={`item-badge ${item.is_found ? 'found' : 'lost'}`}>{item.is_found ? 'Found' : 'Lost'}</span>
+                                        <span className="item-badge">{item.item_type}</span>
+                                    </div>
+                                    <p className="card-description">{item.description}</p>
+                                    <p className="card-meta">📍 {item.location || 'Location not specified'}</p>
+                                    <div className="card-action">
+                                        <button className="btn-secondary" onClick={() => handleReunite(item)}>
+                                            Mark as Reunited
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <h3>{item.item_type}</h3>
-                            <p><strong>Description:</strong> {item.description}</p>
-                            <div className="item-contact">
-                                <p><strong>{item.is_found ? 'Found by' : 'Lost by'}:</strong> {item.reporter_name}</p>
-                                <p><strong>📞 Contact:</strong> {item.phone_number}</p>
-                                <p><strong>Report ID:</strong> {item.report_id}</p>
-                                <p><strong>Date:</strong> {new Date(item.created_at).toLocaleDateString()}</p>
-                            </div>
-                            <button 
-                                className="btn-secondary"
-                                onClick={() => handleReunite(item.report_id)}
-                                disabled={resolvingId === item.report_id || item.user_id !== user.id}
-                                style={{
-                                    width: '100%', 
-                                    marginTop: '1rem', 
-                                    fontSize: '0.9rem', 
-                                    padding: '0.75rem',
-                                    opacity: item.user_id !== user.id ? 0.5 : 1,
-                                    cursor: item.user_id !== user.id ? 'not-allowed' : 'pointer'
-                                }}
-                                title={item.user_id !== user.id ? 'You can only mark your own items as reunited' : ''}
-                            >
-                                {resolvingId === item.report_id ? '⏳ Marking...' : '✅ Mark as Reunited'}
-                            </button>
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                </>
             )}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                type="confirm"
+                message="Mark this item as reunited? This will remove it from the active list."
+                onConfirm={confirmReunite}
+                onCancel={() => setConfirmModal({ isOpen: false, itemId: null, itemKey: null, reportType: null })}
+            />
+            <ConfirmModal
+                isOpen={resultModal.isOpen}
+                type={resultModal.type}
+                message={resultModal.message}
+                onCancel={() => setResultModal({ isOpen: false, message: '', type: 'success' })}
+            />
+            {modalImage && <ImageModal imageUrl={modalImage} onClose={() => setModalImage(null)} />}
         </div>
     );
 }

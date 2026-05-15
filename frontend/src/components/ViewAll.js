@@ -1,141 +1,175 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import ConfirmModal from './ConfirmModal';
+import ImageModal from './ImageModal';
 
-function ViewAll({ apiUrl, user }) {
-    const [filter, setFilter] = useState('all');
+const PAGE_SIZE = 9;
+
+function ViewAll({ apiUrl, baseUrl, user }) {
     const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [resolvingId, setResolvingId] = useState(null);
+    const [filter, setFilter] = useState('all');
+    const [page, setPage] = useState(1);
+    const [loading, setLoading] = useState(false);
+    const [modalImage, setModalImage] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, itemId: null, itemKey: null });
+    const [resultModal, setResultModal] = useState({ isOpen: false, message: '', type: 'success' });
 
     useEffect(() => {
         loadItems();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filter]);
+
+    useEffect(() => {
+        setPage(1);
     }, [filter]);
 
     const loadItems = async () => {
         setLoading(true);
         try {
-            let url = '';
-            if (filter === 'all') {
-                url = `${apiUrl}/items/all`;
-            } else if (filter === 'lost') {
-                url = `${apiUrl}/items/lost`;
-            } else {
-                url = `${apiUrl}/items/found`;
-            }
-            
+            let url;
+            if (filter === 'lost')  url = `${apiUrl}/items/lost`;
+            else if (filter === 'found') url = `${apiUrl}/items/found`;
+            else url = `${apiUrl}/items/all`;
+
             const response = await axios.get(url);
-            
             if (response.data.success) {
-                setItems(response.data.items);
+                setItems(response.data.items || []);
             }
-        } catch (error) {
-            console.error('Error loading items:', error);
+        } catch (err) {
+            console.error('Error loading items:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleReunite = async (reportId) => {
-        if (!window.confirm('Have you successfully reunited with this item? This will mark it as resolved.')) {
-            return;
-        }
-        
-        setResolvingId(reportId);
+    const handleReunite = (item) => {
+        setConfirmModal({ isOpen: true, itemId: item.report_id, itemKey: item.id });
+    };
+
+    const confirmReunite = async () => {
+        const { itemId, itemKey } = confirmModal;
+        setConfirmModal({ isOpen: false, itemId: null, itemKey: null });
         try {
-            const response = await axios.put(
-                `${apiUrl}/items/resolve/${reportId}`,
-                { userId: user.id }
-            );
-            
+            const response = await axios.put(`${apiUrl}/items/resolve/${itemId}`, { userId: user.id });
             if (response.data.success) {
-                alert('✅ Item marked as reunited! Thank you for updating the system.');
-                loadItems(); // Refresh the list
-            }
-        } catch (error) {
-            console.error('Error resolving item:', error);
-            if (error.response?.data?.error) {
-                alert('❌ ' + error.response.data.error);
+                setItems(prev => prev.filter(i => i.id !== itemKey));
+                setResultModal({ isOpen: true, message: 'Item marked as reunited! Great job.', type: 'success' });
             } else {
-                alert('❌ Error marking item as reunited');
+                setResultModal({ isOpen: true, message: response.data.message || 'Could not resolve item.', type: 'error' });
             }
-        } finally {
-            setResolvingId(null);
+        } catch (err) {
+            setResultModal({ isOpen: true, message: 'Server error. Please try again.', type: 'error' });
         }
     };
 
+    const totalPages = Math.ceil(items.length / PAGE_SIZE);
+    const pageItems = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
     return (
-        <div className="items-container">
-            <h2>📋 All Items</h2>
-            
-            <div className="search-box" style={{justifyContent: 'center'}}>
-                <button 
-                    className={filter === 'all' ? 'btn-primary' : 'btn-secondary'}
-                    onClick={() => setFilter('all')}
-                    style={{width: 'auto'}}
-                >
-                    📦 All Items
-                </button>
-                <button 
-                    className={filter === 'lost' ? 'btn-primary' : 'btn-secondary'}
-                    onClick={() => setFilter('lost')}
-                    style={{width: 'auto'}}
-                >
-                    😢 Lost Only
-                </button>
-                <button 
-                    className={filter === 'found' ? 'btn-primary' : 'btn-secondary'}
-                    onClick={() => setFilter('found')}
-                    style={{width: 'auto'}}
-                >
-                    ✨ Found Only
-                </button>
-            </div>
-            
-            {loading && <div className="loading">🔄 Loading...</div>}
-            
-            {!loading && items.length === 0 && (
-                <div className="empty-state">
-                    <h3>📭 No items found</h3>
-                    <p>Be the first to report an item!</p>
+        <div>
+            <div className="view-all-header">
+                <h1>All Items</h1>
+                <div className="filter-tabs">
+                    {['all', 'lost', 'found'].map(f => (
+                        <button
+                            key={f}
+                            className={`filter-tab${filter === f ? ' active' : ''}`}
+                            onClick={() => setFilter(f)}
+                        >
+                            {f === 'all' ? 'All Items' : f === 'lost' ? 'Lost' : 'Found'}
+                        </button>
+                    ))}
                 </div>
+            </div>
+
+            {!loading && (
+                <p className="results-meta">
+                    {items.length} item{items.length !== 1 ? 's' : ''}
+                    {totalPages > 1 && ` — page ${page} of ${totalPages}`}
+                </p>
             )}
-            
-            {!loading && items.length > 0 && (
+
+            {loading ? (
+                <div className="loading"><div className="loading-spinner" /></div>
+            ) : pageItems.length === 0 ? (
+                <div className="empty-state">
+                    <p>No {filter !== 'all' ? filter : ''} items found.</p>
+                </div>
+            ) : (
                 <div className="items-grid">
-                    {items.map(item => (
-                        <div key={item.id} className={`item-card ${item.is_found ? 'found' : 'lost'}`}>
-                            <div className={`item-badge ${item.is_found ? 'found' : 'lost'}`}>
-                                {item.is_found ? 'FOUND' : 'LOST'}
+                    {pageItems.map(item => (
+                        <div key={item.id} className="item-card">
+                            {item.image_url ? (
+                                <div
+                                    className="card-image"
+                                    style={{ backgroundImage: `url(${baseUrl}${item.image_url})` }}
+                                    onClick={() => setModalImage(`${baseUrl}${item.image_url}`)}
+                                />
+                            ) : (
+                                <div className="card-no-image">No Photo</div>
+                            )}
+                            <div className="card-body">
+                                <div className="card-badge-row">
+                                    <span className={`item-badge ${item.is_found ? 'found' : 'lost'}`}>
+                                        {item.is_found ? 'Found' : 'Lost'}
+                                    </span>
+                                    <span className="item-badge">{item.item_type}</span>
+                                </div>
+                                <p className="card-description">{item.description}</p>
+                                <p className="card-meta">📍 {item.location || 'Location not specified'}</p>
+                                <div className="card-action">
+                                    <button className="btn-secondary" onClick={() => handleReunite(item)}>
+                                        Mark as Reunited
+                                    </button>
+                                </div>
                             </div>
-                            <h3>{item.item_type}</h3>
-                            <p><strong>Description:</strong> {item.description}</p>
-                            <div className="item-contact">
-                                <p><strong>{item.is_found ? 'Found by' : 'Lost by'}:</strong> {item.reporter_name}</p>
-                                <p><strong>📞 Contact:</strong> {item.phone_number}</p>
-                                <p><strong>Report ID:</strong> {item.report_id}</p>
-                                <p><strong>Date:</strong> {new Date(item.created_at).toLocaleDateString()}</p>
-                                <p style={{marginTop: '0.5rem', fontSize: '0.85rem', color: '#666'}}>💡 Contact directly to reunite!</p>
-                            </div>
-                            <button 
-                                className="btn-secondary"
-                                onClick={() => handleReunite(item.report_id)}
-                                disabled={resolvingId === item.report_id || item.user_id !== user.id}
-                                style={{
-                                    width: '100%', 
-                                    marginTop: '1rem', 
-                                    fontSize: '0.9rem', 
-                                    padding: '0.75rem',
-                                    opacity: item.user_id !== user.id ? 0.5 : 1,
-                                    cursor: item.user_id !== user.id ? 'not-allowed' : 'pointer'
-                                }}
-                                title={item.user_id !== user.id ? 'You can only mark your own items as reunited' : ''}
-                            >
-                                {resolvingId === item.report_id ? '⏳ Marking...' : '✅ Mark as Reunited'}
-                            </button>
                         </div>
                     ))}
                 </div>
             )}
+
+            {totalPages > 1 && (
+                <div className="pagination">
+                    <button
+                        className="page-btn"
+                        disabled={page === 1}
+                        onClick={() => setPage(p => p - 1)}
+                    >
+                        ← Prev
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                        <button
+                            key={p}
+                            className={`page-btn${page === p ? ' active' : ''}`}
+                            onClick={() => setPage(p)}
+                        >
+                            {p}
+                        </button>
+                    ))}
+                    <button
+                        className="page-btn"
+                        disabled={page === totalPages}
+                        onClick={() => setPage(p => p + 1)}
+                    >
+                        Next →
+                    </button>
+                </div>
+            )}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                type="confirm"
+                message="Mark this item as reunited? This will remove it from the active list."
+                onConfirm={confirmReunite}
+                onCancel={() => setConfirmModal({ isOpen: false, itemId: null, itemKey: null })}
+            />
+            <ConfirmModal
+                isOpen={resultModal.isOpen}
+                type={resultModal.type}
+                message={resultModal.message}
+                onCancel={() => setResultModal({ isOpen: false, message: '', type: 'success' })}
+            />
+            {modalImage && <ImageModal imageUrl={modalImage} onClose={() => setModalImage(null)} />}
         </div>
     );
 }

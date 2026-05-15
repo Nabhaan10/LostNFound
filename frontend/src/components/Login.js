@@ -2,150 +2,79 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 function Login({ apiUrl, onLogin, onSwitchToRegister }) {
-    const [formData, setFormData] = useState({
-        rollNumber: '',
-        password: ''
-    });
-    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({ rollNumber: '', password: '' });
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError('');
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
+        if (!formData.rollNumber.trim() || !formData.password.trim()) {
+            setError('Please fill in all fields.');
+            return;
+        }
         setLoading(true);
-
         try {
-            const response = await axios.post(`${apiUrl}/auth/login`, {
-                rollNumber: formData.rollNumber,
-                password: formData.password
-            });
-
+            const response = await axios.post(`${apiUrl}/auth/login`, formData);
             if (response.data.success) {
                 localStorage.setItem('user', JSON.stringify(response.data.user));
                 onLogin(response.data.user);
+            } else {
+                setError(response.data.message || 'Login failed.');
             }
-        } catch (error) {
-            setError(error.response?.data?.error || 'Login failed. Please try again.');
+        } catch (err) {
+            setError(err.response?.data?.error || err.response?.data?.message || 'Invalid roll number or password.');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '2rem'
-        }}>
-            <div className="login-card" style={{
-                borderRadius: '20px',
-                padding: '3rem',
-                maxWidth: '450px',
-                width: '100%',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-            }}>
-                <h2>
-                    👋 Welcome Back
-                </h2>
-                <p>
-                    Login to your account
-                </p>
+        <div className="auth-page">
+            <div className="auth-card">
+                <div className="auth-logo">
+                    <span className="auth-logo-text">L&F</span>
+                </div>
+                <h1 className="auth-heading">Welcome back</h1>
+                <p className="auth-sub">Sign in to manage your lost &amp; found reports</p>
 
-                {error && (
-                    <div style={{
-                        padding: '1rem',
-                        backgroundColor: '#fee',
-                        border: '1px solid #fcc',
-                        borderRadius: '8px',
-                        marginBottom: '1rem',
-                        color: '#c00'
-                    }}>
-                        {error}
-                    </div>
-                )}
+                {error && <div className="alert error">{error}</div>}
 
                 <form onSubmit={handleSubmit}>
-                    <div style={{marginBottom: '1.5rem'}}>
-                        <label>
-                            Roll Number
-                        </label>
+                    <div className="form-group">
+                        <label>Roll Number</label>
                         <input
                             type="text"
+                            name="rollNumber"
                             value={formData.rollNumber}
-                            onChange={(e) => setFormData({...formData, rollNumber: e.target.value})}
-                            required
-                            placeholder="Enter your roll number"
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                fontSize: '1rem'
-                            }}
+                            onChange={handleChange}
+                            placeholder="e.g. 22CS001"
+                            autoFocus
                         />
                     </div>
-
-                    <div style={{marginBottom: '1.5rem'}}>
-                        <label>
-                            Password
-                        </label>
+                    <div className="form-group">
+                        <label>Password</label>
                         <input
                             type="password"
+                            name="password"
                             value={formData.password}
-                            onChange={(e) => setFormData({...formData, password: e.target.value})}
-                            required
+                            onChange={handleChange}
                             placeholder="Enter your password"
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                fontSize: '1rem'
-                            }}
                         />
                     </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        style={{
-                            width: '100%',
-                            padding: '1rem',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontSize: '1.1rem',
-                            fontWeight: 'bold',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.6 : 1
-                        }}
-                    >
-                        {loading ? '⏳ Logging in...' : '🚀 Login'}
+                    <button type="submit" className="btn-primary" disabled={loading}>
+                        {loading ? 'Signing in…' : 'Sign In'}
                     </button>
                 </form>
 
-                <div style={{marginTop: '1.5rem', textAlign: 'center'}}>
-                    <p style={{color: '#666', fontSize: '0.9rem'}}>
-                        Don't have an account?{' '}
-                            <button
-                                onClick={onSwitchToRegister}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#667eea',
-                                    cursor: 'pointer',
-                                    textDecoration: 'underline',
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                Register here
-                            </button>
-                        </p>
-                    </div>
+                <div className="auth-divider">Don't have an account?</div>
+                <button className="auth-switch-btn" onClick={onSwitchToRegister}>
+                    Create an account
+                </button>
             </div>
         </div>
     );

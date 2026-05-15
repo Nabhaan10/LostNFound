@@ -1,229 +1,148 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ConfirmModal from './ConfirmModal';
 
 function Register({ apiUrl, onRegister, onSwitchToLogin }) {
-    const [formData, setFormData] = useState({
-        rollNumber: '',
-        password: '',
-        confirmPassword: '',
-        name: '',
-        phoneNumber: ''
-    });
-    const [loading, setLoading] = useState(false);
+    const [formData, setFormData] = useState({ name: '', rollNumber: '', phoneNumber: '', password: '', confirmPassword: '' });
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [createdUser, setCreatedUser] = useState(null);
+
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+        setError('');
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-
-        if (formData.password !== formData.confirmPassword) {
-            setError('Passwords do not match');
+        if (!formData.name.trim() || !formData.rollNumber.trim() || !formData.password.trim()) {
+            setError('Please fill in all fields.');
             return;
         }
-
         if (formData.password.length < 6) {
-            setError('Password must be at least 6 characters');
+            setError('Password must be at least 6 characters.');
             return;
         }
-
+        if (formData.password !== formData.confirmPassword) {
+            setError('Passwords do not match.');
+            return;
+        }
         setLoading(true);
-
         try {
             const response = await axios.post(`${apiUrl}/auth/register`, {
-                rollNumber: formData.rollNumber,
-                password: formData.password,
                 name: formData.name,
-                phoneNumber: formData.phoneNumber
+                rollNumber: formData.rollNumber,
+                phoneNumber: formData.phoneNumber,
+                password: formData.password,
             });
-
             if (response.data.success) {
-                alert('✅ Registration successful! Please login.');
-                onSwitchToLogin();
+                const newUser = {
+                    id: response.data.userId,
+                    name: formData.name,
+                    rollNumber: formData.rollNumber,
+                    phoneNumber: formData.phoneNumber,
+                };
+                setCreatedUser(newUser);
+                setShowSuccess(true);
+            } else {
+                setError(response.data.message || 'Registration failed.');
             }
-        } catch (error) {
-            setError(error.response?.data?.error || 'Registration failed. Please try again.');
+        } catch (err) {
+            setError(err.response?.data?.error || err.response?.data?.message || 'Registration failed. Roll number may already exist.');
         } finally {
             setLoading(false);
         }
     };
 
-    return (
-        <div style={{
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '2rem'
-        }}>
-            <div className="login-card" style={{
-                borderRadius: '20px',
-                padding: '3rem',
-                maxWidth: '450px',
-                width: '100%',
-                boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-            }}>
-                <h2>
-                    📝 Create Account
-                </h2>
-                <p>
-                    Join the Lost & Found system
-                </p>
+    const handleSuccessClose = () => {
+        setShowSuccess(false);
+        if (createdUser) {
+            localStorage.setItem('user', JSON.stringify(createdUser));
+            onRegister(createdUser);
+        }
+    };
 
-                {error && (
-                    <div style={{
-                        padding: '1rem',
-                        backgroundColor: '#fee',
-                        border: '1px solid #fcc',
-                        borderRadius: '8px',
-                        marginBottom: '1rem',
-                        color: '#c00'
-                    }}>
-                        {error}
-                    </div>
-                )}
+    return (
+        <div className="auth-page">
+            <div className="auth-card">
+                <div className="auth-logo">
+                    <span className="auth-logo-text">L&F</span>
+                </div>
+                <h1 className="auth-heading">Create account</h1>
+                <p className="auth-sub">Join the campus lost &amp; found network</p>
+
+                {error && <div className="alert error">{error}</div>}
 
                 <form onSubmit={handleSubmit}>
-                    <div style={{marginBottom: '1rem'}}>
-                        <label>
-                            Roll Number *
-                        </label>
+                    <div className="form-group">
+                        <label>Full Name</label>
                         <input
                             type="text"
-                            value={formData.rollNumber}
-                            onChange={(e) => setFormData({...formData, rollNumber: e.target.value})}
-                            required
-                            placeholder="e.g., 2021CS001"
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                fontSize: '1rem'
-                            }}
-                        />
-                    </div>
-
-                    <div style={{marginBottom: '1rem'}}>
-                        <label>
-                            Full Name *
-                        </label>
-                        <input
-                            type="text"
+                            name="name"
                             value={formData.name}
-                            onChange={(e) => setFormData({...formData, name: e.target.value})}
-                            required
-                            placeholder="Enter your full name"
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                fontSize: '1rem'
-                            }}
+                            onChange={handleChange}
+                            placeholder="Your full name"
+                            autoFocus
                         />
                     </div>
-
-                    <div style={{marginBottom: '1rem'}}>
-                        <label>
-                            Phone Number *
-                        </label>
+                    <div className="form-group">
+                        <label>Roll Number</label>
                         <input
-                            type="tel"
+                            type="text"
+                            name="rollNumber"
+                            value={formData.rollNumber}
+                            onChange={handleChange}
+                            placeholder="e.g. 22CS001"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Phone Number</label>
+                        <input
+                            type="text"
+                            name="phoneNumber"
                             value={formData.phoneNumber}
-                            onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                            required
-                            placeholder="10-digit phone number"
-                            pattern="[0-9]{10}"
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                fontSize: '1rem'
-                            }}
+                            onChange={handleChange}
+                            placeholder="Contact number"
                         />
                     </div>
-
-                    <div style={{marginBottom: '1rem'}}>
-                        <label>
-                            Password *
-                        </label>
+                    <div className="form-group">
+                        <label>Password</label>
                         <input
                             type="password"
+                            name="password"
                             value={formData.password}
-                            onChange={(e) => setFormData({...formData, password: e.target.value})}
-                            required
-                            placeholder="Minimum 6 characters"
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                fontSize: '1rem'
-                            }}
+                            onChange={handleChange}
+                            placeholder="Min. 6 characters"
                         />
                     </div>
-
-                    <div style={{marginBottom: '1.5rem'}}>
-                        <label>
-                            Confirm Password *
-                        </label>
+                    <div className="form-group">
+                        <label>Confirm Password</label>
                         <input
                             type="password"
+                            name="confirmPassword"
                             value={formData.confirmPassword}
-                            onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                            required
-                            placeholder="Re-enter password"
-                            style={{
-                                width: '100%',
-                                padding: '0.75rem',
-                                border: '2px solid #ddd',
-                                borderRadius: '8px',
-                                fontSize: '1rem'
-                            }}
+                            onChange={handleChange}
+                            placeholder="Repeat your password"
                         />
                     </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        style={{
-                            width: '100%',
-                            padding: '1rem',
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '8px',
-                            fontSize: '1.1rem',
-                            fontWeight: 'bold',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            opacity: loading ? 0.6 : 1
-                        }}
-                    >
-                        {loading ? '⏳ Creating Account...' : '✨ Register'}
+                    <button type="submit" className="btn-primary" disabled={loading}>
+                        {loading ? 'Creating account…' : 'Create Account'}
                     </button>
                 </form>
 
-                <div style={{marginTop: '1.5rem', textAlign: 'center'}}>
-                    <p style={{color: '#666', fontSize: '0.9rem'}}>
-                        Already have an account?{' '}
-                        <button
-                            onClick={onSwitchToLogin}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#667eea',
-                                cursor: 'pointer',
-                                textDecoration: 'underline',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            Login here
-                        </button>
-                    </p>
-                </div>
+                <div className="auth-divider">Already have an account?</div>
+                <button className="auth-switch-btn" onClick={onSwitchToLogin}>
+                    Sign in instead
+                </button>
             </div>
+
+            <ConfirmModal
+                isOpen={showSuccess}
+                type="success"
+                message={`Account created successfully! Welcome, ${createdUser?.name || ''}.`}
+                onCancel={handleSuccessClose}
+            />
         </div>
     );
 }

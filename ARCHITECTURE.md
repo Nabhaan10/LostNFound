@@ -61,8 +61,7 @@ App.js (Root Component)
 │   ├── Report Lost Button
 │   ├── Report Found Button
 │   ├── Search Button
-│   ├── View All Button
-│   └── Process Queue Button
+│   └── view all button
 │
 ├── Content Area (Dynamic Routing)
 │   │

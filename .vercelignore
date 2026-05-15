@@ -1,0 +1,36 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+frontend/build
+*.exe
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Legacy C version
+legacy-c-version
+
+# Documentation files (optional, remove if you want docs deployed)
+*.md
+!README.md
+
+# IDE and OS files
+.DS_Store
+.vscode
+.idea
+
+# Database files
+*.sql
+
+# Test files
+TESTING.md
+
+# Batch files
+*.bat

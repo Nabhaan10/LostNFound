@@ -1,154 +1,215 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import ImageModal from './ImageModal';
 
-function ReportFound({ apiUrl, user, onSuccess }) {
-    const [formData, setFormData] = useState({
-        itemType: '',
-        description: '',
-        name: user?.name || '',
-        phone: user?.phoneNumber || ''
-    });
-    const [message, setMessage] = useState(null);
+const ITEM_TYPES = ['Electronics', 'Wallet', 'Keys', 'Bag', 'Clothing', 'Books', 'ID/Card', 'Jewelry', 'Other'];
+
+function ReportFound({ apiUrl, baseUrl, user, onSuccess }) {
+    const [formData, setFormData] = useState({ itemType: '', description: '', location: '', name: user?.name || '', phone: user?.phoneNumber || '' });
+    const [image, setImage] = useState(null);
+    const [imagePreview, setImagePreview] = useState(null);
     const [matches, setMatches] = useState([]);
+    const [message, setMessage] = useState('');
+    const [messageType, setMessageType] = useState('');
     const [loading, setLoading] = useState(false);
+    const [modalImage, setModalImage] = useState(null);
+
+    const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                setMessage('Image is too large. Maximum size is 5MB.');
+                setMessageType('error');
+                return;
+            }
+            setMessage('');
+            setImage(file);
+            const reader = new FileReader();
+            reader.onload = ev => setImagePreview(ev.target.result);
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            if (file.size > 5 * 1024 * 1024) {
+                setMessage('Image is too large. Maximum size is 5MB.');
+                setMessageType('error');
+                return;
+            }
+            setMessage('');
+            setImage(file);
+            const reader = new FileReader();
+            reader.onload = ev => setImagePreview(ev.target.result);
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!formData.itemType || !formData.description.trim() || !formData.name.trim() || !formData.phone.trim()) {
+            setMessage('Please fill in all required fields.');
+            setMessageType('error');
+            return;
+        }
         setLoading(true);
-        setMessage(null);
-        
+        setMessage('');
         try {
-            const response = await axios.post(`${apiUrl}/items/report-found`, {
-                ...formData,
-                userId: user.id
-            });
-            
+            const data = new FormData();
+            data.append('itemType', formData.itemType);
+            data.append('description', formData.description);
+            data.append('location', formData.location);
+            data.append('name', formData.name);
+            data.append('phone', formData.phone);
+            data.append('userId', user.id);
+            if (image) data.append('image', image);
+
+            const response = await axios.post(`${apiUrl}/items/report-found`, data);
+
             if (response.data.success) {
-                setMessage({
-                    type: 'success',
-                    text: `✅ ${response.data.message}!`
-                });
-                
-                if (response.data.matches && response.data.matches.length > 0) {
-                    setMatches(response.data.matches);
-                } else {
-                    setMatches([]);
-                }
-                
-                // Reset form
-                setFormData({
-                    itemType: '',
-                    description: '',
-                    name: '',
-                    phone: ''
-                });
-                
+                setMessage('Found item reported successfully!');
+                setMessageType('success');
+                setMatches(response.data.matches || []);
+                setFormData({ itemType: '', description: '', location: '', name: user?.name || '', phone: user?.phoneNumber || '' });
+                setImage(null);
+                setImagePreview(null);
                 if (onSuccess) onSuccess();
+            } else {
+                setMessage(response.data.message || 'Failed to submit report.');
+                setMessageType('error');
             }
-        } catch (error) {
-            setMessage({
-                type: 'error',
-                text: '❌ Error reporting item: ' + (error.response?.data?.error || error.message)
-            });
+        } catch (err) {
+            setMessage(err.response?.data?.error || err.response?.data?.message || 'Server error. Please try again.');
+            setMessageType('error');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="form-container">
-            <h2>✨ Report Found Item</h2>
-            
-            {message && (
-                <div className={`alert ${message.type}`}>
-                    {message.text}
-                </div>
-            )}
-            
-            <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label>Item Type *</label>
-                    <select
-                        value={formData.itemType}
-                        onChange={(e) => setFormData({...formData, itemType: e.target.value})}
-                        required
-                    >
-                        <option value="">Select item type</option>
-                        <option value="phone">📱 Phone</option>
-                        <option value="wallet">👛 Wallet</option>
-                        <option value="keys">🔑 Keys</option>
-                        <option value="laptop">💻 Laptop</option>
-                        <option value="bag">🎒 Bag</option>
-                        <option value="watch">⌚ Watch</option>
-                        <option value="jewelry">💍 Jewelry</option>
-                        <option value="glasses">👓 Glasses</option>
-                        <option value="bottle">🧃 Water Bottle</option>
-                        <option value="books">📚 Books</option>
-                        <option value="id-card">🪪 ID Card</option>
-                        <option value="umbrella">☂️ Umbrella</option>
-                        <option value="other">📦 Other</option>
-                    </select>
-                </div>
-                
-                <div className="form-group">
-                    <label>Description *</label>
-                    <textarea
-                        placeholder="Describe the item in detail (color, brand, unique features, where you found it, etc.)"
-                        value={formData.description}
-                        onChange={(e) => setFormData({...formData, description: e.target.value})}
-                        required
-                    />
-                </div>
-                
-                <div className="form-group">
-                    <label>Your Name *</label>
-                    <input
-                        type="text"
-                        placeholder="Enter your full name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        required
-                    />
-                </div>
-                
-                <div className="form-group">
-                    <label>Phone Number *</label>
-                    <input
-                        type="tel"
-                        placeholder="Enter your contact number"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        required
-                    />
-                </div>
-                
-                <button type="submit" className="btn-primary" disabled={loading}>
-                    {loading ? '⏳ Submitting...' : '✨ Report Found Item'}
-                </button>
-            </form>
-            
+        <div className="form-wrapper">
+            <div className="form-header">
+                <h1>Report Found Item</h1>
+                <p>Let us know what you found — we'll match it to someone who lost it.</p>
+            </div>
+
+            {message && <div className={`alert ${messageType}`}>{message}</div>}
+
+            <div className="form-card">
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label>Item Type</label>
+                        <select name="itemType" value={formData.itemType} onChange={handleChange}>
+                            <option value="">Select a type…</option>
+                            {ITEM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                    </div>
+                    <div className="form-group">
+                        <label>Description</label>
+                        <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            rows={4}
+                            placeholder="Describe the item — colour, brand, distinguishing features…"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Your Name</label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            placeholder="Your full name"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Phone Number</label>
+                        <input
+                            type="text"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleChange}
+                            placeholder="Contact number"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Found At Location</label>
+                        <input
+                            type="text"
+                            name="location"
+                            value={formData.location}
+                            onChange={handleChange}
+                            placeholder="e.g. Main Gate, Lab 3, Parking Lot"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Photo (optional)</label>
+                        <div
+                            className="file-drop-zone"
+                            onDrop={handleDrop}
+                            onDragOver={e => e.preventDefault()}
+                            onClick={() => document.getElementById('found-image-input').click()}
+                        >
+                            {imagePreview ? (
+                                <img src={imagePreview} alt="Preview" className="image-preview" />
+                            ) : (
+                                <span className="file-drop-label">
+                                    📷 Drag & drop or <strong>click to upload</strong><br />
+                                    <small>JPG, PNG, GIF, WEBP — max 5MB</small>
+                                </span>
+                            )}
+                        </div>
+                        <input
+                            id="found-image-input"
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={handleImageChange}
+                        />
+                    </div>
+                    <button type="submit" className="btn-primary" disabled={loading}>
+                        {loading ? 'Submitting…' : 'Submit Report'}
+                    </button>
+                </form>
+            </div>
+
             {matches.length > 0 && (
-                <div className="matches-section">
-                    <h3>🎯 Matching Lost Items</h3>
-                    <p style={{marginBottom: '1rem', color: '#666'}}>
-                        We found {matches.length} person(s) looking for similar item(s). Contact them directly!
-                    </p>
+                <section className="matches-section">
+                    <h2 className="section-title">Possible Owners Found 🔍</h2>
+                    <p>These lost item reports match what you found:</p>
                     <div className="items-grid">
                         {matches.map(item => (
-                            <div key={item.id} className="item-card lost">
-                                <div className="item-badge lost">LOST</div>
-                                <h3>{item.item_type}</h3>
-                                <p><strong>Description:</strong> {item.description}</p>
-                                <div className="item-contact">
-                                    <p><strong>Lost by:</strong> {item.reporter_name}</p>
-                                    <p><strong>📞 Contact:</strong> {item.phone_number}</p>
-                                    <p><strong>Report ID:</strong> {item.report_id}</p>
+                            <div key={item.id} className="item-card">
+                                {item.image_url ? (
+                                    <div
+                                        className="card-image"
+                                        style={{ backgroundImage: `url(${baseUrl}${item.image_url})` }}
+                                        onClick={() => setModalImage(`${baseUrl}${item.image_url}`)}
+                                    />
+                                ) : (
+                                    <div className="card-no-image">No Photo</div>
+                                )}
+                                <div className="card-body">
+                                    <div className="card-badge-row">
+                                        <span className="item-badge lost">Lost</span>
+                                        <span className="item-badge">{item.item_type}</span>
+                                    </div>
+                                    <p className="card-description">{item.description}</p>
+                                    <p className="card-meta">📍 {item.location || 'Location not specified'}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
-                </div>
+                </section>
             )}
+
+            {modalImage && <ImageModal imageUrl={modalImage} onClose={() => setModalImage(null)} />}
         </div>
     );
 }

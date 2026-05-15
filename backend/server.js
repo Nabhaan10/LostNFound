@@ -1,13 +1,64 @@
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
 
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Multer configuration for file uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
+        }
+    }
+});
+
+// Wrapper so multer errors are returned as JSON instead of crashing with 500
+function uploadSingle(req, res, next) {
+    upload.single('image')(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ success: false, error: err.message });
+        }
+        next();
+    });
+}
+
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+// Serve uploaded images
+app.use('/uploads', express.static(uploadsDir));
 
 // Database connection pool
 const pool = mysql.createPool({
@@ -20,15 +71,110 @@ const pool = mysql.createPool({
     queueLimit: 0
 });
 
-// Test database connection
+// Test database connection and run migrations
 pool.getConnection()
-    .then(conn => {
+    .then(async conn => {
         console.log('✓ Database connected successfully');
+        
+        // Migration 1: Add resolved_count column if it doesn't exist
+        try {
+            const [columns] = await conn.execute(
+                "SHOW COLUMNS FROM users LIKE 'resolved_count'"
+            );
+            
+            if (columns.length === 0) {
+                console.log('Adding resolved_count column to users table...');
+                await conn.execute('ALTER TABLE users ADD COLUMN resolved_count INT DEFAULT 0');
+                
+                // Update existing users
+                await conn.execute(`
+                    UPDATE users u
+                    SET resolved_count = (
+                        SELECT COUNT(*) 
+                        FROM items 
+                        WHERE user_id = u.id AND status = 'resolved'
+                    )
+                `);
+                console.log('✓ resolved_count column added successfully');
+            }
+        } catch (err) {
+            console.error('Migration error (resolved_count):', err.message);
+        }
+        
+        // Migration 2: Remove is_staff column if it exists
+        try {
+            const [staffColumns] = await conn.execute(
+                "SHOW COLUMNS FROM users LIKE 'is_staff'"
+            );
+            
+            if (staffColumns.length > 0) {
+                console.log('Removing staff-related functionality...');
+                
+                // Delete staff account
+                await conn.execute("DELETE FROM users WHERE roll_number = 'staff'");
+                
+                // Remove is_staff column
+                await conn.execute('ALTER TABLE users DROP COLUMN is_staff');
+                
+                console.log('✓ Staff functionality removed successfully');
+            }
+        } catch (err) {
+            console.error('Migration error (remove staff):', err.message);
+        }
+        
         conn.release();
     })
     .catch(err => {
         console.error('✗ Database connection failed:', err.message);
     });
+
+// ==================== AUTO CLEANUP FUNCTION ====================
+
+// Function to delete unresolved items older than 20 days
+const cleanupOldItems = async () => {
+    try {
+        const twentyDaysAgo = new Date();
+        twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20);
+        
+        // First, get the items to be deleted (to clean up their images)
+        const [itemsToDelete] = await pool.execute(
+            'SELECT id, image_url FROM items WHERE status = ? AND created_at < ?',
+            ['pending', twentyDaysAgo]
+        );
+        
+        // Delete the database records
+        const [result] = await pool.execute(
+            'DELETE FROM items WHERE status = ? AND created_at < ?',
+            ['pending', twentyDaysAgo]
+        );
+        
+        // Delete associated image files
+        if (itemsToDelete.length > 0) {
+            itemsToDelete.forEach(item => {
+                if (item.image_url) {
+                    const imagePath = path.join(__dirname, item.image_url);
+                    if (fs.existsSync(imagePath)) {
+                        fs.unlinkSync(imagePath);
+                    }
+                }
+            });
+        }
+        
+        if (result.affectedRows > 0) {
+            console.log(`🗑️ Cleaned up ${result.affectedRows} old unresolved item(s) (older than 20 days)`);
+        }
+    } catch (error) {
+        console.error('Error during cleanup:', error.message);
+    }
+};
+
+// Run cleanup every 24 hours (86400000 ms)
+setInterval(cleanupOldItems, 24 * 60 * 60 * 1000);
+
+// Run cleanup on server start
+cleanupOldItems();
+
+console.log('📅 Auto-cleanup enabled: Unresolved items older than 20 days will be automatically deleted');
 
 // ==================== AUTHENTICATION ENDPOINTS ====================
 
@@ -105,22 +251,23 @@ app.post('/api/auth/login', async (req, res) => {
 // ============= API ENDPOINTS =============
 
 // Report a lost item
-app.post('/api/items/report-lost', async (req, res) => {
+app.post('/api/items/report-lost', uploadSingle, async (req, res) => {
     try {
         const { itemType, description, name, phone, userId } = req.body;
         
         if (!itemType || !description || !name || !phone || !userId) {
             return res.status(400).json({ 
                 success: false, 
-                error: 'All fields are required' 
+                error: 'All fields are required'
             });
         }
         
         const reportId = Date.now();
+        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
         
         const [result] = await pool.execute(
-            'INSERT INTO items (item_type, description, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, 0, ?, ?, ?)',
-            [itemType, description, name, phone, reportId, 'pending', userId]
+            'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)',
+            [itemType, description, imageUrl, name, phone, reportId, 'pending', userId]
         );
         
         // Check for matching found items
@@ -134,7 +281,8 @@ app.post('/api/items/report-lost', async (req, res) => {
             reportId: reportId,
             itemId: result.insertId,
             message: 'Lost item reported successfully',
-            matches: matches
+            matches: matches,
+            imageUrl: imageUrl
         });
     } catch (error) {
         console.error('Error reporting lost item:', error);
@@ -143,22 +291,23 @@ app.post('/api/items/report-lost', async (req, res) => {
 });
 
 // Report a found item
-app.post('/api/items/report-found', async (req, res) => {
+app.post('/api/items/report-found', uploadSingle, async (req, res) => {
     try {
         const { itemType, description, name, phone, userId } = req.body;
         
         if (!itemType || !description || !name || !phone || !userId) {
             return res.status(400).json({ 
                 success: false, 
-                error: 'All fields are required' 
+                error: 'All fields are required'
             });
         }
         
         const reportId = Date.now();
+        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
         
         const [result] = await pool.execute(
-            'INSERT INTO items (item_type, description, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, 1, ?, ?, ?)',
-            [itemType, description, name, phone, reportId, 'pending', userId]
+            'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)',
+            [itemType, description, imageUrl, name, phone, reportId, 'pending', userId]
         );
         
         // Check for matching lost items
@@ -172,7 +321,8 @@ app.post('/api/items/report-found', async (req, res) => {
             reportId: reportId,
             itemId: result.insertId,
             message: 'Found item reported successfully',
-            matches: matches
+            matches: matches,
+            imageUrl: imageUrl
         });
     } catch (error) {
         console.error('Error reporting found item:', error);
@@ -271,7 +421,7 @@ app.put('/api/items/resolve/:reportId', async (req, res) => {
         
         // Check if item exists and belongs to user
         const [items] = await pool.execute(
-            'SELECT user_id FROM items WHERE report_id = ? AND status = "pending"',
+            'SELECT user_id, image_url FROM items WHERE report_id = ? AND status = "pending"',
             [reportId]
         );
         
@@ -289,19 +439,44 @@ app.put('/api/items/resolve/:reportId', async (req, res) => {
             });
         }
         
-        const [result] = await pool.execute(
-            'UPDATE items SET status = "resolved", updated_at = CURRENT_TIMESTAMP WHERE report_id = ? AND user_id = ? AND status = "pending"',
-            [reportId, userId]
-        );
+        // Start a transaction to ensure both operations succeed or fail together
+        const connection = await pool.getConnection();
         
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                error: 'Item not found or already resolved' 
-            });
+        try {
+            await connection.beginTransaction();
+            
+            // Increment user's resolved count
+            await connection.execute(
+                'UPDATE users SET resolved_count = resolved_count + 1 WHERE id = ?',
+                [userId]
+            );
+            
+            // Delete the item record
+            const [result] = await connection.execute(
+                'DELETE FROM items WHERE report_id = ? AND user_id = ? AND status = "pending"',
+                [reportId, userId]
+            );
+            
+            if (result.affectedRows === 0) {
+                throw new Error('Item not found or already resolved');
+            }
+            
+            // Delete associated image if exists
+            if (items[0].image_url) {
+                const imagePath = path.join(__dirname, 'uploads', path.basename(items[0].image_url));
+                if (fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
+                }
+            }
+            
+            await connection.commit();
+            res.json({ success: true, message: 'Item resolved and removed successfully' });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
         }
-        
-        res.json({ success: true, message: 'Item resolved successfully' });
     } catch (error) {
         console.error('Error resolving item:', error);
         res.status(500).json({ success: false, error: error.message });
@@ -347,14 +522,58 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
+// Get user-specific statistics and active reports
+app.get('/api/user/stats/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        // Get total active reports (pending)
+        const [totalReports] = await pool.execute(
+            'SELECT COUNT(*) as count FROM items WHERE user_id = ? AND status = "pending"',
+            [userId]
+        );
+        
+        // Get resolved count from users table
+        const [userData] = await pool.execute(
+            'SELECT resolved_count FROM users WHERE id = ?',
+            [userId]
+        );
+        
+        const resolvedCount = userData.length > 0 ? userData[0].resolved_count : 0;
+        
+        const [activeReports] = await pool.execute(
+            'SELECT id, item_type, description, created_at, is_found, status, image_url FROM items WHERE user_id = ? AND status = "pending" ORDER BY created_at DESC',
+            [userId]
+        );
+        
+        res.json({
+            success: true,
+            userStats: {
+                total: totalReports[0].count,
+                resolved: resolvedCount,
+                pending: totalReports[0].count
+            },
+            activeReports: activeReports
+        });
+    } catch (error) {
+        console.error('Error fetching user stats:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.json({ success: true, message: 'Server is running' });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📍 API available at http://localhost:${PORT}/api`);
-});
+// Export the app instance for Vercel deployment
+module.exports = app;
+
+// Start server only when running directly (not when imported as module for Vercel)
+if (require.main === module) {
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+        console.log(`server running on port ${PORT}`);
+        console.log(`API available at http://localhost:${PORT}/api`);
+    });
+}

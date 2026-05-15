@@ -209,7 +209,6 @@ The original C code functionality has been translated to the web application:
 | Search by type | `GET /api/items/search/type/:type` |
 | Search by description | `GET /api/items/search/description/:keyword` |
 | Report lost/found | `POST /api/items/report-lost/found` |
-| Process queue | Staff queue management page |
 | Match finding | Automatic matching in API responses |
 
 ## 🐛 Troubleshooting
