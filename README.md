@@ -1,21 +1,21 @@
-# 🎓 College Lost & Found System
+# College Lost & Found System
 
 A modern, full-stack web application for managing lost and found items in your college. Built with React frontend, Node.js/Express backend, and MySQL database, while preserving the original C code logic.
 
-## ✨ Features
+## Features
 
-- 📢 **Report Lost Items** - Students can report items they've lost
-- ✨ **Report Found Items** - Students can report items they've found
-- 🔍 **Smart Search** - Search by item type or description keywords
-- 🎯 **Automatic Matching** - System suggests potential matches when reporting items
-- 📋 **View All Items** - Browse all lost and found items with filters
-- 🔐 **User Authentication** - Secure login with roll number and password
-- ✅ **Self-Resolution** - Users can mark their own items as reunited
-- 📊 **Statistics Dashboard** - Real-time stats of items and resolutions
-- 💾 **Persistent Database** - All data stored in MySQL database
-- 🌙 **Dark Mode** - Beautiful dark theme with light mode toggle
+-**Report Lost Items** - Students can report items they've lost
+- **Report Found Items** - Students can report items they've found
+- **Smart Search** - Search by item type or description keywords
+- **Automatic Matching** - System suggests potential matches when reporting items
+- **View All Items** - Browse all lost and found items with filters
+- **User Authentication** - Secure login with roll number and password
+- **Self-Resolution** - Users can mark their own items as reunited
+- **Statistics Dashboard** - Real-time stats of items and resolutions
+- **Persistent Database** - All data stored in MySQL database
+- **Dark Mode** - Beautiful dark theme with light mode toggle
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 SourceCode/
@@ -48,7 +48,7 @@ SourceCode/
 └── schema_update.sql      # User authentication tables
 ```
 
-## 🚀 Setup Instructions
+## Setup Instructions
 
 ### Prerequisites
 
@@ -116,8 +116,8 @@ SourceCode/
    You should see:
    ```
    ✓ Database connected successfully
-   🚀 Server running on port 5000
-   📍 API available at http://localhost:5000/api
+   Server running on port 5000
+   API available at http://localhost:5000/api
    ```
 
 ### Step 3: Frontend Setup
@@ -139,7 +139,7 @@ SourceCode/
    
    The app will automatically open in your browser at `http://localhost:3000`
 
-## 🎮 Usage Guide
+## Usage Guide
 
 ### For Students
 
@@ -180,7 +180,7 @@ SourceCode/
 - `GET /api/items/found` - Get found items only
 - `GET /api/stats` - Get statistics
 
-## 🎨 Technology Stack
+## Technology Stack
 
 ### Frontend
 - **React.js** - UI framework
@@ -211,7 +211,7 @@ The original C code functionality has been translated to the web application:
 | Report lost/found | `POST /api/items/report-lost/found` |
 | Match finding | Automatic matching in API responses |
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Database Connection Error
 - Verify MySQL is running
@@ -235,18 +235,18 @@ npm install
 npm install
 ```
 
-## 📝 Future Enhancements
+## Future Enhancements
 
-- 🔐 User authentication and authorization
-- 📧 Email notifications for matches
-- 📸 Image upload for items
-- 🗺️ Location tracking of where item was found/lost
-- 📱 Mobile responsive design improvements
-- 🔔 Real-time notifications using WebSockets
-- 📊 Advanced analytics dashboard
-- 🌐 Multi-language support
+- User authentication and authorization
+- Email notifications for matches
+- Image upload for items
+- Location tracking of where item was found/lost
+- Mobile responsive design improvements
+- Real-time notifications using WebSockets
+- Advanced analytics dashboard
+- Multi-language support
 
-## 👨‍💻 Development
+##  Development
 
 ### Running in Development Mode
 
@@ -273,7 +273,7 @@ npm run build
 
 MIT License - Feel free to use this project for your college!
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -281,7 +281,7 @@ MIT License - Feel free to use this project for your college!
 4. Push to the branch
 5. Open a Pull Request
 
-## 📞 Support
+## Support
 
 For issues or questions, please create an issue in the GitHub repository.
 
