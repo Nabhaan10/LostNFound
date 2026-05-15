@@ -4,16 +4,16 @@ A modern, full-stack web application for managing lost and found items in your c
 
 ## Features
 
--**Report Lost Items** - Students can report items they've lost
-- **Report Found Items** - Students can report items they've found
-- **Smart Search** - Search by item type or description keywords
-- **Automatic Matching** - System suggests potential matches when reporting items
-- **View All Items** - Browse all lost and found items with filters
-- **User Authentication** - Secure login with roll number and password
-- **Self-Resolution** - Users can mark their own items as reunited
-- **Statistics Dashboard** - Real-time stats of items and resolutions
-- **Persistent Database** - All data stored in MySQL database
-- **Dark Mode** - Beautiful dark theme with light mode toggle
+- 📢 **Report Lost Items** - Students can report items they've lost
+- ✨ **Report Found Items** - Students can report items they've found
+- 🔍 **Smart Search** - Search by item type or description keywords
+- 🎯 **Automatic Matching** - System suggests potential matches when reporting items
+- 📋 **View All Items** - Browse all lost and found items with filters
+- 🔐 **User Authentication** - Secure login with roll number and password
+- ✅ **Self-Resolution** - Users can mark their own items as reunited
+- 📊 **Statistics Dashboard** - Real-time stats of items and resolutions
+- 💾 **Persistent Database** - All data stored in MySQL database
+- 🌙 **Dark Mode** - Beautiful dark theme with light mode toggle
 
 ## Project Structure
 
@@ -246,7 +246,7 @@ npm install
 - Advanced analytics dashboard
 - Multi-language support
 
-##  Development
+## Development
 
 ### Running in Development Mode
 
