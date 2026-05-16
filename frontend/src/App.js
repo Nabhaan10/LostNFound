@@ -126,7 +126,7 @@ function App() {
 
             {/* Main Content */}
             <main className="page-content">
-                {view === 'home'         && <Home stats={stats} apiUrl={API_URL} user={user} view={view} onNavigate={navigate} />}
+                {view === 'home'         && <Home stats={stats} apiUrl={API_URL} user={user} onNavigate={navigate} />}
                 {view === 'report-lost'  && <ReportLost apiUrl={API_URL} baseUrl={BASE_URL} user={user} onSuccess={loadStats} />}
                 {view === 'report-found' && <ReportFound apiUrl={API_URL} baseUrl={BASE_URL} user={user} onSuccess={loadStats} />}
                 {view === 'search'       && <Search apiUrl={API_URL} baseUrl={BASE_URL} user={user} />}

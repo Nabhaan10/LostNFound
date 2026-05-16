@@ -700,15 +700,6 @@
     border: 1px solid var(--border);
 }
 
-.image-preview img {
-    max-width: 140px;
-    max-height: 120px;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    display: block;
-    border: 1px solid var(--border);
-}
-
 /* Alert messages */
 .alert {
     padding: 0.7rem 0.9rem;

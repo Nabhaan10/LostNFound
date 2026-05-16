@@ -50,7 +50,7 @@ function ImageModal({ imageUrl, itemType, onClose }) {
                 </button>
                 <img
                     src={imageUrl}
-                    alt={itemType}
+                    alt={itemType || 'Item image'}
                     onClick={(e) => e.stopPropagation()}
                     style={{
                         maxWidth: '100%',

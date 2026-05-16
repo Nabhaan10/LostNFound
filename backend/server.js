@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
@@ -60,64 +60,81 @@ app.use(cors());
 // Serve uploaded images
 app.use('/uploads', express.static(uploadsDir));
 
+function convertPlaceholders(sql) {
+    let index = 1;
+    return sql.replace(/\?/g, () => `$${index++}`);
+}
+
 // Database connection pool
-const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'lost_and_found',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
+const pool = new Pool(
+    process.env.DATABASE_URL
+        ? {
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined
+        }
+        : {
+            host: process.env.DB_HOST || 'localhost',
+            port: Number(process.env.DB_PORT || 5432),
+            user: process.env.DB_USER || 'postgres',
+            password: process.env.DB_PASSWORD || '',
+            database: process.env.DB_NAME || 'lost_and_found',
+            max: 10,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 2000
+        }
+);
+
+pool.execute = async (sql, params = []) => {
+    const result = await pool.query(convertPlaceholders(sql), params);
+    return [result.rows, {
+        insertId: result.rows[0]?.id,
+        affectedRows: result.rowCount
+    }];
+};
+
+pool.getConnection = async () => {
+    const client = await pool.connect();
+    client.execute = async (sql, params = []) => {
+        const result = await client.query(convertPlaceholders(sql), params);
+        return [result.rows, {
+            insertId: result.rows[0]?.id,
+            affectedRows: result.rowCount
+        }];
+    };
+    client.beginTransaction = async () => client.query('BEGIN');
+    client.commit = async () => client.query('COMMIT');
+    client.rollback = async () => client.query('ROLLBACK');
+    return client;
+};
 
 // Test database connection and run migrations
-pool.getConnection()
-    .then(async conn => {
+pool.query('SELECT 1')
+    .then(async () => {
+        const conn = await pool.getConnection();
         console.log('✓ Database connected successfully');
         
         // Migration 1: Add resolved_count column if it doesn't exist
         try {
-            const [columns] = await conn.execute(
-                "SHOW COLUMNS FROM users LIKE 'resolved_count'"
-            );
-            
-            if (columns.length === 0) {
-                console.log('Adding resolved_count column to users table...');
-                await conn.execute('ALTER TABLE users ADD COLUMN resolved_count INT DEFAULT 0');
-                
-                // Update existing users
-                await conn.execute(`
-                    UPDATE users u
-                    SET resolved_count = (
-                        SELECT COUNT(*) 
-                        FROM items 
-                        WHERE user_id = u.id AND status = 'resolved'
-                    )
-                `);
-                console.log('✓ resolved_count column added successfully');
-            }
+            await conn.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS resolved_count INT DEFAULT 0');
+            await conn.execute(`
+                UPDATE users u
+                SET resolved_count = (
+                    SELECT COUNT(*) 
+                    FROM items 
+                    WHERE user_id = u.id AND status = 'resolved'
+                )
+            `);
+            console.log('✓ resolved_count column ensured successfully');
         } catch (err) {
             console.error('Migration error (resolved_count):', err.message);
         }
         
         // Migration 2: Remove is_staff column if it exists
         try {
-            const [staffColumns] = await conn.execute(
-                "SHOW COLUMNS FROM users LIKE 'is_staff'"
-            );
-            
-            if (staffColumns.length > 0) {
-                console.log('Removing staff-related functionality...');
-                
-                // Delete staff account
-                await conn.execute("DELETE FROM users WHERE roll_number = 'staff'");
-                
-                // Remove is_staff column
-                await conn.execute('ALTER TABLE users DROP COLUMN is_staff');
-                
-                console.log('✓ Staff functionality removed successfully');
-            }
+            console.log('Removing staff-related functionality...');
+            await conn.execute("DELETE FROM users WHERE roll_number = 'staff'");
+            await conn.execute('ALTER TABLE users DROP COLUMN IF EXISTS is_staff');
+            console.log('✓ Staff functionality removed successfully');
         } catch (err) {
             console.error('Migration error (remove staff):', err.message);
         }
@@ -198,7 +215,7 @@ app.post('/api/auth/register', async (req, res) => {
         
         // Insert new user (plain text password for simplicity)
         const [result] = await pool.execute(
-            'INSERT INTO users (roll_number, password, name, phone_number) VALUES (?, ?, ?, ?)',
+            'INSERT INTO users (roll_number, password, name, phone_number) VALUES (?, ?, ?, ?) RETURNING id',
             [rollNumber, password, name, phoneNumber]
         );
         
@@ -266,13 +283,13 @@ app.post('/api/items/report-lost', uploadSingle, async (req, res) => {
         const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
         
         const [result] = await pool.execute(
-            'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)',
+            'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, FALSE, ?, ?, ?) RETURNING id',
             [itemType, description, imageUrl, name, phone, reportId, 'pending', userId]
         );
         
         // Check for matching found items
         const [matches] = await pool.execute(
-            'SELECT * FROM items WHERE item_type = ? AND is_found = 1 AND status = "pending" LIMIT 5',
+            "SELECT * FROM items WHERE item_type = ? AND is_found = TRUE AND status = 'pending' LIMIT 5",
             [itemType]
         );
         
@@ -306,13 +323,13 @@ app.post('/api/items/report-found', uploadSingle, async (req, res) => {
         const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
         
         const [result] = await pool.execute(
-            'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)',
+            'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?) RETURNING id',
             [itemType, description, imageUrl, name, phone, reportId, 'pending', userId]
         );
         
         // Check for matching lost items
         const [matches] = await pool.execute(
-            'SELECT * FROM items WHERE item_type = ? AND is_found = 0 AND status = "pending" LIMIT 5',
+            "SELECT * FROM items WHERE item_type = ? AND is_found = FALSE AND status = 'pending' LIMIT 5",
             [itemType]
         );
         
@@ -336,7 +353,7 @@ app.get('/api/items/search/type/:type', async (req, res) => {
         const { type } = req.params;
         
         const [rows] = await pool.execute(
-            'SELECT * FROM items WHERE item_type = ? AND status = "pending" ORDER BY created_at DESC',
+            "SELECT * FROM items WHERE item_type = ? AND status = 'pending' ORDER BY created_at DESC",
             [type]
         );
         
@@ -353,7 +370,7 @@ app.get('/api/items/search/description/:keyword', async (req, res) => {
         const { keyword } = req.params;
         
         const [rows] = await pool.execute(
-            'SELECT * FROM items WHERE description LIKE ? AND status = "pending" ORDER BY created_at DESC',
+            "SELECT * FROM items WHERE description LIKE ? AND status = 'pending' ORDER BY created_at DESC",
             [`%${keyword}%`]
         );
         
@@ -368,7 +385,7 @@ app.get('/api/items/search/description/:keyword', async (req, res) => {
 app.get('/api/items/all', async (req, res) => {
     try {
         const [rows] = await pool.execute(
-            'SELECT * FROM items WHERE status = "pending" ORDER BY created_at DESC'
+            "SELECT * FROM items WHERE status = 'pending' ORDER BY created_at DESC"
         );
         
         res.json({ success: true, items: rows });
@@ -382,7 +399,7 @@ app.get('/api/items/all', async (req, res) => {
 app.get('/api/items/lost', async (req, res) => {
     try {
         const [rows] = await pool.execute(
-            'SELECT * FROM items WHERE is_found = 0 AND status = "pending" ORDER BY created_at DESC'
+            "SELECT * FROM items WHERE is_found = FALSE AND status = 'pending' ORDER BY created_at DESC"
         );
         
         res.json({ success: true, items: rows });
@@ -396,7 +413,7 @@ app.get('/api/items/lost', async (req, res) => {
 app.get('/api/items/found', async (req, res) => {
     try {
         const [rows] = await pool.execute(
-            'SELECT * FROM items WHERE is_found = 1 AND status = "pending" ORDER BY created_at DESC'
+            "SELECT * FROM items WHERE is_found = TRUE AND status = 'pending' ORDER BY created_at DESC"
         );
         
         res.json({ success: true, items: rows });
@@ -421,7 +438,7 @@ app.put('/api/items/resolve/:reportId', async (req, res) => {
         
         // Check if item exists and belongs to user
         const [items] = await pool.execute(
-            'SELECT user_id, image_url FROM items WHERE report_id = ? AND status = "pending"',
+            "SELECT user_id, image_url FROM items WHERE report_id = ? AND status = 'pending'",
             [reportId]
         );
         
@@ -432,7 +449,8 @@ app.put('/api/items/resolve/:reportId', async (req, res) => {
             });
         }
         
-        if (items[0].user_id !== userId) {
+        // Coerce both to strings for comparison (DB returns number, body sends string)
+        if (String(items[0].user_id) !== String(userId)) {
             return res.status(403).json({ 
                 success: false, 
                 error: 'You can only resolve your own items' 
@@ -453,7 +471,7 @@ app.put('/api/items/resolve/:reportId', async (req, res) => {
             
             // Delete the item record
             const [result] = await connection.execute(
-                'DELETE FROM items WHERE report_id = ? AND user_id = ? AND status = "pending"',
+                "DELETE FROM items WHERE report_id = ? AND user_id = ? AND status = 'pending'",
                 [reportId, userId]
             );
             
@@ -491,19 +509,21 @@ app.get('/api/stats', async (req, res) => {
         );
         
         const [pendingItems] = await pool.execute(
-            'SELECT COUNT(*) as count FROM items WHERE status = "pending"'
+            "SELECT COUNT(*) as count FROM items WHERE status = 'pending'"
         );
         
+        // Items are deleted on resolve, so track daily resolutions via resolved_count increments.
+        // We sum resolved_count as a proxy for total resolved; daily resolved is not trackable post-delete.
         const [resolvedToday] = await pool.execute(
-            'SELECT COUNT(*) as count FROM items WHERE status = "resolved" AND DATE(updated_at) = CURDATE()'
+            'SELECT COALESCE(SUM(resolved_count), 0) as count FROM users'
         );
         
         const [lostItems] = await pool.execute(
-            'SELECT COUNT(*) as count FROM items WHERE is_found = 0 AND status = "pending"'
+            "SELECT COUNT(*) as count FROM items WHERE is_found = FALSE AND status = 'pending'"
         );
         
         const [foundItems] = await pool.execute(
-            'SELECT COUNT(*) as count FROM items WHERE is_found = 1 AND status = "pending"'
+            "SELECT COUNT(*) as count FROM items WHERE is_found = TRUE AND status = 'pending'"
         );
         
         res.json({
@@ -529,7 +549,7 @@ app.get('/api/user/stats/:userId', async (req, res) => {
         
         // Get total active reports (pending)
         const [totalReports] = await pool.execute(
-            'SELECT COUNT(*) as count FROM items WHERE user_id = ? AND status = "pending"',
+            "SELECT COUNT(*) as count FROM items WHERE user_id = ? AND status = 'pending'",
             [userId]
         );
         
@@ -542,7 +562,7 @@ app.get('/api/user/stats/:userId', async (req, res) => {
         const resolvedCount = userData.length > 0 ? userData[0].resolved_count : 0;
         
         const [activeReports] = await pool.execute(
-            'SELECT id, item_type, description, created_at, is_found, status, image_url FROM items WHERE user_id = ? AND status = "pending" ORDER BY created_at DESC',
+            "SELECT id, item_type, description, created_at, is_found, status, image_url FROM items WHERE user_id = ? AND status = 'pending' ORDER BY created_at DESC",
             [userId]
         );
         
@@ -573,7 +593,7 @@ module.exports = app;
 if (require.main === module) {
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
-        console.log(`server running on port ${PORT}`);
-        console.log(`API available at http://localhost:${PORT}/api`);
+        console.log(`✓ Server running on port ${PORT}`);
+        console.log(`✓ API available at http://localhost:${PORT}/api`);
     });
 }

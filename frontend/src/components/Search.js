@@ -12,7 +12,7 @@ function Search({ apiUrl, baseUrl, user }) {
     const [searched, setSearched] = useState(false);
     const [loading, setLoading] = useState(false);
     const [modalImage, setModalImage] = useState(null);
-    const [confirmModal, setConfirmModal] = useState({ isOpen: false, itemId: null, itemKey: null, reportType: null });
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, itemId: null, itemKey: null });
     const [resultModal, setResultModal] = useState({ isOpen: false, message: '', type: 'success' });
 
     const handleSearch = async (e) => {
@@ -41,12 +41,12 @@ function Search({ apiUrl, baseUrl, user }) {
     };
 
     const handleReunite = (item) => {
-        setConfirmModal({ isOpen: true, itemId: item.report_id, itemKey: item.id, reportType: item.is_found });
+        setConfirmModal({ isOpen: true, itemId: item.report_id, itemKey: item.id });
     };
 
     const confirmReunite = async () => {
         const { itemId, itemKey } = confirmModal;
-        setConfirmModal({ isOpen: false, itemId: null, itemKey: null, reportType: null });
+        setConfirmModal({ isOpen: false, itemId: null, itemKey: null });
         try {
             const response = await axios.put(`${apiUrl}/items/resolve/${itemId}`, { userId: user.id });
             if (response.data.success) {
@@ -144,7 +144,7 @@ function Search({ apiUrl, baseUrl, user }) {
                 type="confirm"
                 message="Mark this item as reunited? This will remove it from the active list."
                 onConfirm={confirmReunite}
-                onCancel={() => setConfirmModal({ isOpen: false, itemId: null, itemKey: null, reportType: null })}
+                onCancel={() => setConfirmModal({ isOpen: false, itemId: null, itemKey: null })}
             />
             <ConfirmModal
                 isOpen={resultModal.isOpen}

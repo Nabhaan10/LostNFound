@@ -1,6 +1,6 @@
 # College Lost & Found System
 
-A modern, full-stack web application for managing lost and found items in your college. Built with React frontend, Node.js/Express backend, and MySQL database, while preserving the original C code logic.
+A modern, full-stack web application for managing lost and found items in your college. Built with React frontend, Node.js/Express backend, and PostgreSQL database, while preserving the original C code logic.
 
 ## Features
 
@@ -12,7 +12,7 @@ A modern, full-stack web application for managing lost and found items in your c
 - **User Authentication** - Secure login with roll number and password
 - **Self-Resolution** - Users can mark their own items as reunited
 - **Statistics Dashboard** - Real-time stats of items and resolutions
-- **Persistent Database** - All data stored in MySQL database
+- **Persistent Database** - All data stored in PostgreSQL database
 - **Dark Mode** - Beautiful dark theme with light mode toggle
 
 ## Project Structure
@@ -53,28 +53,28 @@ SourceCode/
 ### Prerequisites
 
 1. **Node.js** (v16 or higher) - [Download](https://nodejs.org/)
-2. **MySQL** (or XAMPP with MySQL) - [Download MySQL](https://dev.mysql.com/downloads/) or [XAMPP](https://www.apachefriends.org/)
+2. **PostgreSQL** - [Download PostgreSQL](https://www.postgresql.org/download/) or use Docker
 3. **Git** (optional) - [Download](https://git-scm.com/)
 
 ### Step 1: Database Setup
 
-1. **Install and start MySQL**
-   - If using XAMPP, start Apache and MySQL from XAMPP Control Panel
-   - If using standalone MySQL, ensure MySQL service is running
+1. **Install and start PostgreSQL**
+   - If using Docker, run the provided `docker-compose.yml`
+   - If using standalone PostgreSQL, ensure the service is running
 
 2. **Create the database**
    
-   Open MySQL command line or phpMyAdmin and run:
+   Open `psql` or a PostgreSQL GUI and run:
    ```sql
-   mysql -u root -p
+   CREATE DATABASE lost_and_found;
    ```
    
    Then execute the schema:
    ```sql
-   source C:/Users/nabha/OneDrive/Desktop/Projects/SourceCode/schema.sql
+   \i C:/Users/nabha/OneDrive/Desktop/Projects/SourceCode/docker/postgres/init.sql
    ```
    
-   Or copy-paste the contents of `schema.sql` into phpMyAdmin SQL tab.
+   Or copy-paste the contents of `docker/postgres/init.sql` into your SQL client.
 
 3. **Verify database creation**
    ```sql
@@ -83,7 +83,7 @@ SourceCode/
    ```
    You should see: `items`, `users`, `match_history`
    
-   Note: Also run `schema_update.sql` to add the users table for authentication.
+   Note: The backend also applies small PostgreSQL migrations on startup.
 
 ### Step 2: Backend Setup
 
@@ -102,8 +102,9 @@ SourceCode/
    Edit `backend/.env` file if needed:
    ```env
    DB_HOST=localhost
-   DB_USER=root
-   DB_PASSWORD=your_mysql_password
+   DB_PORT=5432
+   DB_USER=postgres
+   DB_PASSWORD=your_postgres_password
    DB_NAME=lost_and_found
    PORT=5000
    ```
