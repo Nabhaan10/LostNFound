@@ -3,59 +3,57 @@ const { Pool } = require('pg');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
 
 const app = express();
 
-// Use /tmp in production (Vercel serverless) since the function filesystem is read-only
-const uploadsDir = process.env.NODE_ENV === 'production'
-    ? '/tmp/uploads'
-    : path.join(__dirname, 'uploads');
-
-try {
-    if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-} catch (err) {
-    console.warn('Could not create uploads directory (expected in serverless):', err.message);
-}
-
-// Multer configuration for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadsDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
+// Cloudinary configuration
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Upload a buffer to Cloudinary and return the secure URL
+const uploadToCloudinary = (buffer) => new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+        { folder: 'lost-found', resource_type: 'image' },
+        (err, result) => err ? reject(err) : resolve(result.secure_url)
+    );
+    stream.end(buffer);
+});
+
+// Delete a Cloudinary image by its stored URL
+const deleteFromCloudinary = async (imageUrl) => {
+    if (!imageUrl || !imageUrl.includes('cloudinary.com')) return;
+    try {
+        const parts = imageUrl.split('/');
+        const file  = parts[parts.length - 1].replace(/\.[^.]+$/, '');
+        const folder = parts[parts.length - 2];
+        await cloudinary.uploader.destroy(`${folder}/${file}`);
+    } catch (err) {
+        console.warn('Could not delete Cloudinary image:', err.message);
+    }
+};
+
+// Multer — memory storage (buffer passed to Cloudinary, nothing written to disk)
 const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
-    },
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|webp/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        
-        if (mimetype && extname) {
+        const allowed = /jpeg|jpg|png|gif|webp/;
+        if (allowed.test(file.mimetype) && allowed.test(path.extname(file.originalname).toLowerCase())) {
             return cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
         }
+        cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
     }
 });
 
 // Wrapper so multer errors are returned as JSON instead of crashing with 500
 function uploadSingle(req, res, next) {
     upload.single('image')(req, res, (err) => {
-        if (err) {
-            return res.status(400).json({ success: false, error: err.message });
-        }
+        if (err) return res.status(400).json({ success: false, error: err.message });
         next();
     });
 }
@@ -64,10 +62,7 @@ function uploadSingle(req, res, next) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
-// Serve uploaded images (local dev only — not available in serverless production)
-if (process.env.NODE_ENV !== 'production') {
-    app.use('/uploads', express.static(uploadsDir));
-}
+
 
 function convertPlaceholders(sql) {
     let index = 1;
@@ -174,16 +169,9 @@ const cleanupOldItems = async () => {
             ['pending', twentyDaysAgo]
         );
         
-        // Delete associated image files
+        // Delete associated Cloudinary images
         if (itemsToDelete.length > 0) {
-            itemsToDelete.forEach(item => {
-                if (item.image_url) {
-                    const imagePath = path.join(__dirname, item.image_url);
-                    if (fs.existsSync(imagePath)) {
-                        fs.unlinkSync(imagePath);
-                    }
-                }
-            });
+            await Promise.all(itemsToDelete.map(item => deleteFromCloudinary(item.image_url)));
         }
         
         if (result.affectedRows > 0) {
@@ -289,7 +277,10 @@ app.post('/api/items/report-lost', uploadSingle, async (req, res) => {
         }
         
         const reportId = Date.now();
-        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+        let imageUrl = null;
+        if (req.file) {
+            imageUrl = await uploadToCloudinary(req.file.buffer);
+        }
         
         const [result] = await pool.execute(
             'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, FALSE, ?, ?, ?) RETURNING id',
@@ -329,7 +320,10 @@ app.post('/api/items/report-found', uploadSingle, async (req, res) => {
         }
         
         const reportId = Date.now();
-        const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+        let imageUrl = null;
+        if (req.file) {
+            imageUrl = await uploadToCloudinary(req.file.buffer);
+        }
         
         const [result] = await pool.execute(
             'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?) RETURNING id',
@@ -488,13 +482,8 @@ app.put('/api/items/resolve/:reportId', async (req, res) => {
                 throw new Error('Item not found or already resolved');
             }
             
-            // Delete associated image if exists
-            if (items[0].image_url) {
-                const imagePath = path.join(__dirname, 'uploads', path.basename(items[0].image_url));
-                if (fs.existsSync(imagePath)) {
-                    fs.unlinkSync(imagePath);
-                }
-            }
+            // Delete associated Cloudinary image if exists
+            await deleteFromCloudinary(items[0].image_url);
             
             await connection.commit();
             res.json({ success: true, message: 'Item resolved and removed successfully' });
