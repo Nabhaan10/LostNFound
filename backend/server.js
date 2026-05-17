@@ -142,6 +142,14 @@ pool.query('SELECT 1')
         } catch (err) {
             console.error('Migration error (remove staff):', err.message);
         }
+
+        // Migration 3: Add location column to items if it doesn't exist
+        try {
+            await conn.execute('ALTER TABLE items ADD COLUMN IF NOT EXISTS location TEXT');
+            console.log('✓ location column ensured on items table');
+        } catch (err) {
+            console.error('Migration error (location column):', err.message);
+        }
         
         conn.release();
     })
@@ -267,7 +275,7 @@ app.post('/api/auth/login', async (req, res) => {
 // Report a lost item
 app.post('/api/items/report-lost', uploadSingle, async (req, res) => {
     try {
-        const { itemType, description, name, phone, userId } = req.body;
+        const { itemType, description, location, name, phone, userId } = req.body;
         
         if (!itemType || !description || !name || !phone || !userId) {
             return res.status(400).json({ 
@@ -283,8 +291,8 @@ app.post('/api/items/report-lost', uploadSingle, async (req, res) => {
         }
         
         const [result] = await pool.execute(
-            'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, FALSE, ?, ?, ?) RETURNING id',
-            [itemType, description, imageUrl, name, phone, reportId, 'pending', userId]
+            'INSERT INTO items (item_type, description, location, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, ?, FALSE, ?, ?, ?) RETURNING id',
+            [itemType, description, location || null, imageUrl, name, phone, reportId, 'pending', userId]
         );
         
         // Check for matching found items
@@ -310,7 +318,7 @@ app.post('/api/items/report-lost', uploadSingle, async (req, res) => {
 // Report a found item
 app.post('/api/items/report-found', uploadSingle, async (req, res) => {
     try {
-        const { itemType, description, name, phone, userId } = req.body;
+        const { itemType, description, location, name, phone, userId } = req.body;
         
         if (!itemType || !description || !name || !phone || !userId) {
             return res.status(400).json({ 
@@ -326,8 +334,8 @@ app.post('/api/items/report-found', uploadSingle, async (req, res) => {
         }
         
         const [result] = await pool.execute(
-            'INSERT INTO items (item_type, description, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?) RETURNING id',
-            [itemType, description, imageUrl, name, phone, reportId, 'pending', userId]
+            'INSERT INTO items (item_type, description, location, image_url, reporter_name, phone_number, is_found, report_id, status, user_id) VALUES (?, ?, ?, ?, ?, ?, TRUE, ?, ?, ?) RETURNING id',
+            [itemType, description, location || null, imageUrl, name, phone, reportId, 'pending', userId]
         );
         
         // Check for matching lost items
