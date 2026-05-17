@@ -58,6 +58,12 @@ function ReportLost({ apiUrl, baseUrl, user, onSuccess }) {
         }
         setLoading(true);
         setMessage('');
+        if (!user?.id || user.id === 'undefined') {
+            setMessage('Your session is invalid. Please log out and log in again.');
+            setMessageType('error');
+            setLoading(false);
+            return;
+        }
         try {
             const data = new FormData();
             data.append('itemType', formData.itemType);

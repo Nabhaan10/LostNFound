@@ -127,6 +127,7 @@ function Search({ apiUrl, baseUrl, user }) {
                                     </div>
                                     <p className="card-description">{item.description}</p>
                                     <p className="card-meta">📍 {item.location || 'Location not specified'}</p>
+                                    <p className="card-meta">👤 {item.reporter_name} &nbsp;|&nbsp; 📞 {item.phone_number}</p>
                                     {String(item.user_id) === String(user.id) && (
                                         <div className="card-action">
                                             <button className="btn-secondary" onClick={() => handleReunite(item)}>
