@@ -117,11 +117,13 @@ function ViewAll({ apiUrl, baseUrl, user }) {
                                 </div>
                                 <p className="card-description">{item.description}</p>
                                 <p className="card-meta">📍 {item.location || 'Location not specified'}</p>
-                                <div className="card-action">
-                                    <button className="btn-secondary" onClick={() => handleReunite(item)}>
-                                        Mark as Reunited
-                                    </button>
-                                </div>
+                                {String(item.user_id) === String(user.id) && (
+                                    <div className="card-action">
+                                        <button className="btn-secondary" onClick={() => handleReunite(item)}>
+                                            Mark as Reunited
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
