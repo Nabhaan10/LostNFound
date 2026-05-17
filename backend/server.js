@@ -8,10 +8,17 @@ require('dotenv').config();
 
 const app = express();
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
+// Use /tmp in production (Vercel serverless) since the function filesystem is read-only
+const uploadsDir = process.env.NODE_ENV === 'production'
+    ? '/tmp/uploads'
+    : path.join(__dirname, 'uploads');
+
+try {
+    if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+} catch (err) {
+    console.warn('Could not create uploads directory (expected in serverless):', err.message);
 }
 
 // Multer configuration for file uploads
@@ -57,8 +64,10 @@ function uploadSingle(req, res, next) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
-// Serve uploaded images
-app.use('/uploads', express.static(uploadsDir));
+// Serve uploaded images (local dev only — not available in serverless production)
+if (process.env.NODE_ENV !== 'production') {
+    app.use('/uploads', express.static(uploadsDir));
+}
 
 function convertPlaceholders(sql) {
     let index = 1;
